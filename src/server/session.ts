@@ -1,30 +1,20 @@
-// https://github.com/bluesky-social/atproto/blob/main/packages/pds/src/api/com/atproto/server/
 import {
 	ComAtprotoServerCreateSession,
-	ComAtprotoServerDeleteSession,
 	ComAtprotoServerDescribeServer,
 	ComAtprotoServerGetSession,
 	ComAtprotoServerRefreshSession,
 } from "@atcute/atproto";
 import { isDid, isHandle } from "@atcute/lexicons/syntax";
 import type { XRPCRouter } from "@atcute/xrpc-server";
-import {
-	AuthRequiredError,
-	InvalidRequestError,
-	json,
-} from "@atcute/xrpc-server";
+import { AuthRequiredError, json } from "@atcute/xrpc-server";
 import type { AuthContext } from "./auth.ts";
 import { createTokens, verifyAccessToken, verifyRefreshToken } from "./auth.ts";
-
-const REVOKED_JTI_PREFIX = "revoked_jti";
-const REFRESH_TOKEN_TTL_MS = 90 * 24 * 60 * 60 * 1000;
 
 export function registerSessionHandlers(
 	router: XRPCRouter,
 	auth: AuthContext,
 	handle: string,
 	password: string,
-	kv: Deno.Kv,
 ) {
 	if (!isDid(auth.serviceDid)) {
 		throw new Error(`configured DID is invalid: ${auth.serviceDid}`);
@@ -82,20 +72,7 @@ export function registerSessionHandlers(
 
 	router.addProcedure(ComAtprotoServerRefreshSession.mainSchema, {
 		async handler({ request }) {
-			const { sub, jti } = await verifyRefreshToken(request, auth);
-
-			const revoked = await kv.get([REVOKED_JTI_PREFIX, jti]);
-			if (revoked.value !== null) {
-				throw new InvalidRequestError({
-					error: "ExpiredToken",
-					message: "Token has been revoked",
-				});
-			}
-
-			await kv.set([REVOKED_JTI_PREFIX, jti], true, {
-				expireIn: REFRESH_TOKEN_TTL_MS,
-			});
-
+			const { sub } = await verifyRefreshToken(request, auth);
 			const { accessJwt, refreshJwt } = await createTokens(sub, auth);
 
 			return json({
@@ -104,18 +81,6 @@ export function registerSessionHandlers(
 				did,
 				handle: validHandle,
 				active: true,
-			});
-		},
-	});
-
-	router.addProcedure(ComAtprotoServerDeleteSession.mainSchema, {
-		async handler({ request }) {
-			const { jti } = await verifyRefreshToken(request, auth, {
-				allowExpired: true,
-			});
-
-			await kv.set([REVOKED_JTI_PREFIX, jti], true, {
-				expireIn: REFRESH_TOKEN_TTL_MS,
 			});
 		},
 	});

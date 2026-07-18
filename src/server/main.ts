@@ -42,14 +42,13 @@ const repo = root
 const ctx: RepoContext = { repo, keypair, storage };
 
 const auth = { jwtKey: createJwtKey(JWT_SECRET), serviceDid: REPO_DID };
-const kv = await Deno.openKv();
 
 const firehose = new Firehose();
 const ws = createDenoWebSocket();
 
 const router = new XRPCRouter({ websocket: ws, middlewares: [cors()] });
 registerRepoHandlers(router, ctx, firehose, REPO_HANDLE, auth);
-registerSessionHandlers(router, auth, REPO_HANDLE, ADMIN_PASSWORD, kv);
+registerSessionHandlers(router, auth, REPO_HANDLE, ADMIN_PASSWORD);
 registerSyncHandlers(router, firehose);
 
 const handler = createProxyMiddleware(

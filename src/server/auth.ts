@@ -1,4 +1,3 @@
-// https://github.com/bluesky-social/atproto/blob/main/packages/pds/src/auth-verifier.ts
 import { AuthRequiredError, InvalidRequestError } from "@atcute/xrpc-server";
 import * as jose from "jose";
 
@@ -18,7 +17,6 @@ export function createAccessToken(
 	did: string,
 	{ jwtKey, serviceDid }: AuthContext,
 ): Promise<string> {
-	// https://github.com/bluesky-social/atproto/blob/main/packages/pds/src/account-manager/helpers/auth.ts
 	return new jose.SignJWT({ scope: ACCESS_SCOPE })
 		.setProtectedHeader({ typ: "at+jwt", alg: "HS256" })
 		.setAudience(serviceDid)
@@ -32,7 +30,6 @@ export async function createRefreshToken(
 	did: string,
 	{ jwtKey, serviceDid }: AuthContext,
 ): Promise<{ jwt: string; jti: string }> {
-	// https://github.com/bluesky-social/atproto/blob/main/packages/pds/src/account-manager/helpers/auth.ts
 	const jti = crypto.randomUUID();
 	const jwt = await new jose.SignJWT({ scope: REFRESH_SCOPE })
 		.setProtectedHeader({ typ: "refresh+jwt", alg: "HS256" })
@@ -56,7 +53,6 @@ export async function createTokens(
 	return { accessJwt, refreshJwt, refreshJti };
 }
 
-// https://github.com/bluesky-social/atproto/blob/main/packages/pds/src/auth-verifier.ts
 export async function verifyAccessToken(
 	request: Request,
 	{ jwtKey, serviceDid }: AuthContext,
@@ -177,7 +173,6 @@ export async function verifyRefreshToken(
 	return { sub: payload.sub, jti: payload.jti };
 }
 
-// https://github.com/bluesky-social/atproto/blob/main/packages/pds/src/auth-verifier.ts
 export function bearerTokenFromRequest(request: Request): string | null {
 	const authorization = request.headers.get("authorization");
 	if (!authorization) return null;
