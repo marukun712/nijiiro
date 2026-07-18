@@ -35,19 +35,23 @@ export class GitHubRepoStorage extends ReadableBlockstore {
 	}
 
 	private async getFile(path: string) {
-		const res = await this.octokit.rest.repos.getContent({
-			owner: this.owner,
-			repo: this.repo,
-			path,
-			ref: this.branch,
-		});
-		const data = res.data;
-		if (!Array.isArray(data) && data.type === "file") {
-			return {
-				bytes: fromBase64(data.content.replace(/\n/g, "")),
-				sha: data.sha,
-			};
-		} else return null;
+		try {
+			const res = await this.octokit.rest.repos.getContent({
+				owner: this.owner,
+				repo: this.repo,
+				path,
+				ref: this.branch,
+			});
+			const data = res.data;
+			if (!Array.isArray(data) && data.type === "file") {
+				return {
+					bytes: fromBase64(data.content.replace(/\n/g, "")),
+					sha: data.sha,
+				};
+			} else return null;
+		} catch {
+			return null;
+		}
 	}
 
 	private async putFile(path: string, bytes: Uint8Array, message: string) {
