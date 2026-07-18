@@ -111,6 +111,7 @@ export function registerRepoHandlers(
 ) {
 	router.addProcedure(ComAtprotoRepoApplyWrites, {
 		async handler({ input, request }) {
+			console.log("[handler] applyWrites:", input.writes.length, "ops");
 			await verifyAccessToken(request, auth);
 			const ops = input.writes.map(toWriteOp);
 			const { commitData, opCids } = await commitWrites(ctx, firehose, ops);
@@ -138,6 +139,7 @@ export function registerRepoHandlers(
 
 	router.addProcedure(ComAtprotoRepoCreateRecord, {
 		async handler({ input, request }) {
+			console.log("[handler] createRecord:", input.collection);
 			await verifyAccessToken(request, auth);
 			const rkey = input.rkey ?? tidNow();
 			const record = toLexMap(input.record);
@@ -159,6 +161,7 @@ export function registerRepoHandlers(
 
 	router.addProcedure(ComAtprotoRepoPutRecord, {
 		async handler({ input, request }) {
+			console.log("[handler] putRecord:", `${input.collection}/${input.rkey}`);
 			await verifyAccessToken(request, auth);
 			const record = toLexMap(input.record);
 			const op: RecordWriteOp = {
@@ -179,6 +182,10 @@ export function registerRepoHandlers(
 
 	router.addProcedure(ComAtprotoRepoDeleteRecord, {
 		async handler({ input, request }) {
+			console.log(
+				"[handler] deleteRecord:",
+				`${input.collection}/${input.rkey}`,
+			);
 			await verifyAccessToken(request, auth);
 			const op: RecordWriteOp = {
 				action: WriteOpAction.Delete,
@@ -194,6 +201,10 @@ export function registerRepoHandlers(
 
 	router.addQuery(ComAtprotoRepoGetRecord, {
 		async handler({ params }) {
+			console.log(
+				"[handler] getRecord:",
+				`${params.collection}/${params.rkey}`,
+			);
 			const value = await ctx.repo.getRecord(params.collection, params.rkey);
 			if (!value) {
 				return new Response(
@@ -218,6 +229,12 @@ export function registerRepoHandlers(
 
 	router.addQuery(ComAtprotoRepoListRecords, {
 		async handler({ params }) {
+			console.log(
+				"[handler] listRecords:",
+				params.collection,
+				"limit:",
+				params.limit ?? 50,
+			);
 			const limit = params.limit ?? 50;
 			const records: { uri: ResourceUri; cid: string; value: LexMap }[] = [];
 
@@ -281,6 +298,7 @@ export function registerRepoHandlers(
 			const bytes = new Uint8Array(await request.arrayBuffer());
 			const mimeType =
 				request.headers.get("content-type") ?? "application/octet-stream";
+			console.log("[handler] uploadBlob:", mimeType, `(${bytes.length} bytes)`);
 			const cid = await ctx.storage.putBlob(bytes);
 			return json({
 				blob: {

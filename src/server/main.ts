@@ -29,6 +29,12 @@ const JWT_SECRET = getEnv("JWT_SECRET");
 const ADMIN_PASSWORD = getEnv("ADMIN_PASSWORD");
 const PORT = Number(getEnv("PORT", "8080"));
 
+console.log(
+	"[main] initializing storage:",
+	GITHUB_OWNER,
+	GITHUB_REPO,
+	GITHUB_BRANCH,
+);
 const storage = new GitHubRepoStorage(
 	GITHUB_TOKEN,
 	GITHUB_OWNER,
@@ -36,11 +42,13 @@ const storage = new GitHubRepoStorage(
 	GITHUB_BRANCH,
 );
 const keypair = await Secp256k1Keypair.import(REPO_SIGNING_KEY_HEX);
+console.log("[main] loading repo root");
 const root = await storage.getRoot();
 const repo = root
 	? await Repo.load(storage, root)
 	: await Repo.create(storage, REPO_DID, keypair);
 const ctx: RepoContext = { repo, keypair, storage };
+console.log("[main] repo ready:", ctx.repo.did);
 
 const auth = { jwtKey: createJwtKey(JWT_SECRET), serviceDid: REPO_DID };
 
@@ -58,4 +66,5 @@ const handler = createProxyMiddleware(
 	keypair,
 	auth,
 );
+console.log("[main] starting server on port:", PORT);
 Deno.serve({ port: PORT }, handler);

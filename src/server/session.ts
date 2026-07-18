@@ -36,17 +36,20 @@ export function registerSessionHandlers(
 	router.addProcedure(ComAtprotoServerCreateSession.mainSchema, {
 		async handler({ input }) {
 			const { identifier, password: inputPassword } = input;
+			console.log("[session] createSession attempt:", identifier);
 
 			if (
 				(identifier !== validHandle && identifier !== did) ||
 				inputPassword !== password
 			) {
+				console.log("[session] createSession failed: invalid credentials");
 				throw new AuthRequiredError({
 					message: "Invalid identifier or password",
 				});
 			}
 
 			const { accessJwt, refreshJwt } = await createTokens(did, auth);
+			console.log("[session] createSession success:", did);
 
 			return json({
 				accessJwt,
@@ -72,6 +75,7 @@ export function registerSessionHandlers(
 
 	router.addProcedure(ComAtprotoServerRefreshSession.mainSchema, {
 		async handler({ request }) {
+			console.log("[session] refreshSession");
 			const { sub } = await verifyRefreshToken(request, auth);
 			const { accessJwt, refreshJwt } = await createTokens(sub, auth);
 

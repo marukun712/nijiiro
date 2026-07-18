@@ -35,6 +35,7 @@ export class GitHubRepoStorage extends ReadableBlockstore {
 	}
 
 	private async getFile(path: string) {
+		console.log("[github] getFile:", path);
 		try {
 			const res = await this.octokit.rest.repos.getContent({
 				owner: this.owner,
@@ -50,11 +51,13 @@ export class GitHubRepoStorage extends ReadableBlockstore {
 				};
 			} else return null;
 		} catch {
+			console.log("[github] getFile not found:", path);
 			return null;
 		}
 	}
 
 	private async putFile(path: string, bytes: Uint8Array, message: string) {
+		console.log("[github] putFile:", path, `(${bytes.length} bytes)`);
 		const existing = await this.getFile(path);
 		await this.octokit.rest.repos.createOrUpdateFileContents({
 			owner: this.owner,
@@ -65,15 +68,23 @@ export class GitHubRepoStorage extends ReadableBlockstore {
 			sha: existing?.sha,
 			branch: this.branch,
 		});
+		console.log("[github] putFile done:", path);
 	}
 
 	async getRoot(): Promise<Cid | null> {
+		console.log("[github] getRoot");
 		const file = await this.getFile("refs/root");
-		if (!file) return null;
-		return parseCid(new TextDecoder().decode(file.bytes).trim());
+		if (!file) {
+			console.log("[github] getRoot: no root found");
+			return null;
+		}
+		const cid = parseCid(new TextDecoder().decode(file.bytes).trim());
+		console.log("[github] getRoot:", cid.toString());
+		return cid;
 	}
 
 	async updateRoot(cid: Cid, _rev: string): Promise<void> {
+		console.log("[github] updateRoot:", cid.toString());
 		await this.putFile(
 			"refs/root",
 			new TextEncoder().encode(cid.toString()),
@@ -102,7 +113,14 @@ export class GitHubRepoStorage extends ReadableBlockstore {
 	}
 
 	async putBlock(cid: Cid, block: Uint8Array, _rev: string): Promise<void> {
-		if (await this.has(cid)) return;
+		if (await this.has(cid)) {
+			console.log(
+				"[github] putBlock skipped (already exists):",
+				cid.toString(),
+			);
+			return;
+		}
+		console.log("[github] putBlock:", cid.toString());
 		await this.putFile(this.blockPath(cid), block, `put ${cid.toString()}`);
 	}
 
@@ -118,11 +136,18 @@ export class GitHubRepoStorage extends ReadableBlockstore {
 	async putBlob(bytes: Uint8Array): Promise<Cid> {
 		const cid = await cidForRawBytes(bytes);
 		if (!(await this.has(cid))) {
+			console.log(
+				"[github] putBlob:",
+				cid.toString(),
+				`(${bytes.length} bytes)`,
+			);
 			await this.putFile(
 				this.blockPath(cid),
 				bytes,
 				`put blob ${cid.toString()}`,
 			);
+		} else {
+			console.log("[github] putBlob skipped (already exists):", cid.toString());
 		}
 		return cid;
 	}

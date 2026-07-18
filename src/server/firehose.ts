@@ -20,9 +20,19 @@ export class Firehose {
 			start: (c) => {
 				controller = c;
 				this.controllers.add(c);
+				console.log(
+					"[firehose] subscriber connected (total:",
+					this.controllers.size,
+					")",
+				);
 			},
 			cancel: () => {
 				this.controllers.delete(controller);
+				console.log(
+					"[firehose] subscriber disconnected (total:",
+					this.controllers.size,
+					")",
+				);
 			},
 		});
 	}
@@ -41,6 +51,14 @@ export class Firehose {
 			throw new InternalServerError({ message: `repo did is invalid: ${did}` });
 		}
 		this.seq += 1;
+		console.log(
+			"[firehose] publishCommit seq:",
+			this.seq,
+			"ops:",
+			ops.length,
+			"subscribers:",
+			this.controllers.size,
+		);
 
 		const carBytes = await blocksToCarFile(
 			commitData.cid,

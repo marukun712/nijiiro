@@ -58,8 +58,10 @@ export function createProxyMiddleware(
 ): (req: Request) => Promise<Response> {
 	return async (req: Request) => {
 		const url = new URL(req.url);
+		console.log("[proxy]", req.method, url.pathname);
 
 		if (url.pathname === "/.well-known/did.json") {
+			console.log("[proxy] serving did.json");
 			const content = await Deno.readTextFile(DID_JSON_PATH);
 			return new Response(content, {
 				headers: { "content-type": "application/json" },
@@ -69,10 +71,12 @@ export function createProxyMiddleware(
 		const nsid = nsidFromPath(url.pathname);
 
 		if (nsid?.startsWith("app.bsky.")) {
+			console.log("[proxy] forwarding to appview:", nsid);
 			try {
 				return await proxyToAppView(req, nsid, did, keypair, auth);
 			} catch (err) {
 				if (isXrpcError(err)) {
+					console.log("[proxy] appview error:", err.status, nsid);
 					return new Response(
 						JSON.stringify({ error: "AuthRequired", message: String(err) }),
 						{
