@@ -12,6 +12,7 @@
 		"@atcute/lexicons": "npm:@atcute/lexicons@^2.0.3",
 		"@atcute/tid": "npm:@atcute/tid@^1.1.4",
 		"@atcute/xrpc-server": "npm:@atcute/xrpc-server@^2.0.2",
+		"@atcute/xrpc-server/middlewares/cors": "npm:@atcute/xrpc-server@^2.0.2/middlewares/cors",
 		"@atcute/xrpc-server-deno": "npm:@atcute/xrpc-server-deno@^2.0.1",
 		"@atproto/api": "npm:@atproto/api@^0.20.30",
 		"@atproto/crypto": "npm:@atproto/crypto@^0.5.4",

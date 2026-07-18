@@ -1,4 +1,5 @@
 import { XRPCRouter } from "@atcute/xrpc-server";
+import { cors } from "@atcute/xrpc-server/middlewares/cors";
 import { createDenoWebSocket } from "@atcute/xrpc-server-deno";
 import { Secp256k1Keypair } from "@atproto/crypto";
 import { Repo } from "@atproto/repo";
@@ -45,7 +46,7 @@ const kv = await Deno.openKv();
 const firehose = new Firehose();
 const ws = createDenoWebSocket();
 
-const router = new XRPCRouter({ websocket: ws });
+const router = new XRPCRouter({ websocket: ws, middlewares: [cors()] });
 registerRepoHandlers(router, ctx, firehose, REPO_HANDLE, auth);
 registerSessionHandlers(router, auth, REPO_HANDLE, ADMIN_PASSWORD, kv);
 registerSyncHandlers(router, firehose);
