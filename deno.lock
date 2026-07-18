@@ -4,8 +4,10 @@
     "jsr:@std/assert@1": "1.0.19",
     "jsr:@std/internal@^1.0.12": "1.0.14",
     "npm:@atcute/atproto@^4.0.3": "4.0.3_@atcute+lexicons@2.0.3",
+    "npm:@atcute/cbor@^2.3.6": "2.3.6_@atcute+cid@2.4.2",
     "npm:@atcute/lexicons@^2.0.3": "2.0.3",
     "npm:@atcute/tid@^1.1.4": "1.1.4",
+    "npm:@atcute/xrpc-server-deno@^2.0.1": "2.0.1_@atcute+xrpc-server@2.0.2__@atcute+lexicons@2.0.3__@atcute+cid@2.4.2",
     "npm:@atcute/xrpc-server@^2.0.2": "2.0.2_@atcute+lexicons@2.0.3_@atcute+cid@2.4.2",
     "npm:@atproto/api@~0.20.30": "0.20.30",
     "npm:@atproto/crypto@~0.5.4": "0.5.4",
@@ -109,6 +111,12 @@
       "integrity": "sha512-u2UAM7iSM09sQaSG9jtxWFSPgB8boVj50/BoyMvYnhVgGBu+nXIuAcdDUQCsZA44YZgTPPhN/b86JX+jH7SPzQ==",
       "dependencies": [
         "unicode-segmenter@0.17.0"
+      ]
+    },
+    "@atcute/xrpc-server-deno@2.0.1_@atcute+xrpc-server@2.0.2__@atcute+lexicons@2.0.3__@atcute+cid@2.4.2": {
+      "integrity": "sha512-4rQXMGNgqYDc1cYnItDJgpACA8FGWjKbxzKFlDmjiu0MBvn1T7Bxah7yiH/kllCT0xsOaH3mGuzdJ0y2tdsElw==",
+      "dependencies": [
+        "@atcute/xrpc-server"
       ]
     },
     "@atcute/xrpc-server@2.0.2_@atcute+lexicons@2.0.3_@atcute+cid@2.4.2": {
@@ -1080,8 +1088,10 @@
     "dependencies": [
       "jsr:@std/assert@1",
       "npm:@atcute/atproto@^4.0.3",
+      "npm:@atcute/cbor@^2.3.6",
       "npm:@atcute/lexicons@^2.0.3",
       "npm:@atcute/tid@^1.1.4",
+      "npm:@atcute/xrpc-server-deno@^2.0.1",
       "npm:@atcute/xrpc-server@^2.0.2",
       "npm:@atproto/api@~0.20.30",
       "npm:@atproto/crypto@~0.5.4",
