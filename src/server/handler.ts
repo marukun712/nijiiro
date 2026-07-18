@@ -20,6 +20,8 @@ import type { Cid } from "@atproto/lex-data";
 import { isLexMap, type LexMap } from "@atproto/lex-data";
 import type { CommitData, RecordWriteOp } from "@atproto/repo";
 import { WriteOpAction } from "@atproto/repo";
+import type { AuthContext } from "./auth.ts";
+import { verifyAccessToken } from "./auth.ts";
 import type { Firehose } from "./firehose.ts";
 import type { RepoContext } from "./repo.ts";
 
@@ -105,9 +107,11 @@ export function registerRepoHandlers(
 	ctx: RepoContext,
 	firehose: Firehose,
 	handle: string,
+	auth: AuthContext,
 ) {
 	router.addProcedure(ComAtprotoRepoApplyWrites, {
-		async handler({ input }) {
+		async handler({ input, request }) {
+			await verifyAccessToken(request, auth);
 			const ops = input.writes.map(toWriteOp);
 			const { commitData, opCids } = await commitWrites(ctx, firehose, ops);
 
@@ -133,7 +137,8 @@ export function registerRepoHandlers(
 	});
 
 	router.addProcedure(ComAtprotoRepoCreateRecord, {
-		async handler({ input }) {
+		async handler({ input, request }) {
+			await verifyAccessToken(request, auth);
 			const rkey = input.rkey ?? tidNow();
 			const record = toLexMap(input.record);
 			const op: RecordWriteOp = {
@@ -153,7 +158,8 @@ export function registerRepoHandlers(
 	});
 
 	router.addProcedure(ComAtprotoRepoPutRecord, {
-		async handler({ input }) {
+		async handler({ input, request }) {
+			await verifyAccessToken(request, auth);
 			const record = toLexMap(input.record);
 			const op: RecordWriteOp = {
 				action: WriteOpAction.Update,
@@ -172,7 +178,8 @@ export function registerRepoHandlers(
 	});
 
 	router.addProcedure(ComAtprotoRepoDeleteRecord, {
-		async handler({ input }) {
+		async handler({ input, request }) {
+			await verifyAccessToken(request, auth);
 			const op: RecordWriteOp = {
 				action: WriteOpAction.Delete,
 				collection: input.collection,
@@ -270,6 +277,7 @@ export function registerRepoHandlers(
 
 	router.addProcedure(ComAtprotoRepoUploadBlob, {
 		async handler({ request }) {
+			await verifyAccessToken(request, auth);
 			const bytes = new Uint8Array(await request.arrayBuffer());
 			const mimeType =
 				request.headers.get("content-type") ?? "application/octet-stream";
