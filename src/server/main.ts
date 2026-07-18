@@ -27,6 +27,7 @@ const REPO_HANDLE = getEnv("REPO_HANDLE");
 const REPO_SIGNING_KEY_HEX = getEnv("REPO_SIGNING_KEY");
 const JWT_SECRET = getEnv("JWT_SECRET");
 const ADMIN_PASSWORD = getEnv("ADMIN_PASSWORD");
+const PORT = Number(getEnv("PORT", "8080"));
 
 const storage = new GitHubRepoStorage(
 	GITHUB_TOKEN,
@@ -57,4 +58,4 @@ const handler = createProxyMiddleware(
 	keypair,
 	auth,
 );
-Deno.serve({ port: 8080 }, handler);
+Deno.serve({ port: PORT }, handler);

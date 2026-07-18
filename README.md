@@ -97,17 +97,17 @@ REPO_SIGNING_KEY=<ステップ 1 の値>
 
 JWT_SECRET=<ステップ 1 の値>
 ADMIN_PASSWORD=<ステップ 1 の値>
+
+PORT=<ポート>
 ```
 
-`GITHUB_BRANCH` は省略可能で、デフォルトは `main` です。
+`GITHUB_BRANCH`, `PORT` は省略可能で、デフォルトは `main`, `8080` です。
 
 ### 5. サーバーの起動
 
 ```sh
 deno task start
 ```
-
-サーバーはポート `8000` で起動します。
 
 ## リレーへの登録
 
