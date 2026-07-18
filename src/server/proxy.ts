@@ -64,7 +64,10 @@ export function createProxyMiddleware(
 			console.log("[proxy] serving did.json");
 			const content = await Deno.readTextFile(DID_JSON_PATH);
 			return new Response(content, {
-				headers: { "content-type": "application/json" },
+				headers: {
+					"content-type": "application/json",
+					"access-control-allow-origin": "*",
+				},
 			});
 		}
 
