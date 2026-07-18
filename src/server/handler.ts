@@ -4,6 +4,7 @@ import {
 	ComAtprotoRepoDeleteRecord,
 	ComAtprotoRepoDescribeRepo,
 	ComAtprotoRepoGetRecord,
+	ComAtprotoRepoListMissingBlobs,
 	ComAtprotoRepoListRecords,
 	ComAtprotoRepoPutRecord,
 	ComAtprotoRepoUploadBlob,
@@ -16,9 +17,11 @@ import {
 	json,
 	type XRPCRouter,
 } from "@atcute/xrpc-server";
+import type { Cid } from "@atproto/lex-data";
 import { isLexMap, type LexMap } from "@atproto/lex-data";
-import type { RecordWriteOp } from "@atproto/repo";
+import type { CommitData, RecordWriteOp } from "@atproto/repo";
 import { WriteOpAction } from "@atproto/repo";
+import type { Firehose } from "./firehose.ts";
 import type { RepoContext } from "./repo.ts";
 
 type WriteEntry =
@@ -77,37 +80,54 @@ function requireCid<T>(cid: T | null, key: string): T {
 	return cid;
 }
 
+async function commitWrites(
+	ctx: RepoContext,
+	firehose: Firehose,
+	ops: RecordWriteOp[],
+) {
+	const commitData: CommitData = await ctx.repo.formatCommit(ops, ctx.keypair);
+	ctx.repo = await ctx.repo.applyCommit(commitData);
+
+	const opCids: (Cid | null)[] = await Promise.all(
+		ops.map((op) =>
+			op.action === WriteOpAction.Delete
+				? Promise.resolve(null)
+				: ctx.repo.data.get(`${op.collection}/${op.rkey}`),
+		),
+	);
+
+	await firehose.publishCommit(ctx.repo.did, ops, opCids, commitData);
+
+	return { commitData, opCids };
+}
+
 export function registerRepoHandlers(
 	router: XRPCRouter,
 	ctx: RepoContext,
+	firehose: Firehose,
 	handle: string,
 ) {
 	router.addProcedure(ComAtprotoRepoApplyWrites, {
 		async handler({ input }) {
 			const ops = input.writes.map(toWriteOp);
-			ctx.repo = await ctx.repo.applyWrites(ops, ctx.keypair);
+			const { commitData, opCids } = await commitWrites(ctx, firehose, ops);
 
-			const results = await Promise.all(
-				ops.map(async (op) => {
-					if (op.action === WriteOpAction.Delete) {
-						return {
-							$type: "com.atproto.repo.applyWrites#deleteResult" as const,
-						};
-					}
-					const cid = requireCid(
-						await ctx.repo.data.get(`${op.collection}/${op.rkey}`),
-						`${op.collection}/${op.rkey}`,
-					);
+			const results = ops.map((op, i) => {
+				if (op.action === WriteOpAction.Delete) {
 					return {
-						$type: `com.atproto.repo.applyWrites#${op.action}Result` as const,
-						uri: toUri(ctx.repo.did, op.collection, op.rkey),
-						cid: cid.toString(),
+						$type: "com.atproto.repo.applyWrites#deleteResult" as const,
 					};
-				}),
-			);
+				}
+				const cid = requireCid(opCids[i], `${op.collection}/${op.rkey}`);
+				return {
+					$type: `com.atproto.repo.applyWrites#${op.action}Result` as const,
+					uri: toUri(ctx.repo.did, op.collection, op.rkey),
+					cid: cid.toString(),
+				};
+			});
 
 			return json({
-				commit: { cid: ctx.repo.cid.toString(), rev: ctx.repo.commit.rev },
+				commit: { cid: commitData.cid.toString(), rev: commitData.rev },
 				results,
 			});
 		},
@@ -117,25 +137,18 @@ export function registerRepoHandlers(
 		async handler({ input }) {
 			const rkey = input.rkey ?? tidNow();
 			const record = toLexMap(input.record);
-			ctx.repo = await ctx.repo.applyWrites(
-				[
-					{
-						action: WriteOpAction.Create,
-						collection: input.collection,
-						rkey,
-						record,
-					},
-				],
-				ctx.keypair,
-			);
-			const cid = requireCid(
-				await ctx.repo.data.get(`${input.collection}/${rkey}`),
-				`${input.collection}/${rkey}`,
-			);
+			const op: RecordWriteOp = {
+				action: WriteOpAction.Create,
+				collection: input.collection,
+				rkey,
+				record,
+			};
+			const { commitData, opCids } = await commitWrites(ctx, firehose, [op]);
+			const cid = requireCid(opCids[0], `${input.collection}/${rkey}`);
 			return json({
 				uri: toUri(ctx.repo.did, input.collection, rkey),
 				cid: cid.toString(),
-				commit: { cid: ctx.repo.cid.toString(), rev: ctx.repo.commit.rev },
+				commit: { cid: commitData.cid.toString(), rev: commitData.rev },
 			});
 		},
 	});
@@ -143,43 +156,32 @@ export function registerRepoHandlers(
 	router.addProcedure(ComAtprotoRepoPutRecord, {
 		async handler({ input }) {
 			const record = toLexMap(input.record);
-			ctx.repo = await ctx.repo.applyWrites(
-				[
-					{
-						action: WriteOpAction.Update,
-						collection: input.collection,
-						rkey: input.rkey,
-						record,
-					},
-				],
-				ctx.keypair,
-			);
-			const cid = requireCid(
-				await ctx.repo.data.get(`${input.collection}/${input.rkey}`),
-				`${input.collection}/${input.rkey}`,
-			);
+			const op: RecordWriteOp = {
+				action: WriteOpAction.Update,
+				collection: input.collection,
+				rkey: input.rkey,
+				record,
+			};
+			const { commitData, opCids } = await commitWrites(ctx, firehose, [op]);
+			const cid = requireCid(opCids[0], `${input.collection}/${input.rkey}`);
 			return json({
 				uri: toUri(ctx.repo.did, input.collection, input.rkey),
 				cid: cid.toString(),
-				commit: { cid: ctx.repo.cid.toString(), rev: ctx.repo.commit.rev },
+				commit: { cid: commitData.cid.toString(), rev: commitData.rev },
 			});
 		},
 	});
 
 	router.addProcedure(ComAtprotoRepoDeleteRecord, {
 		async handler({ input }) {
-			ctx.repo = await ctx.repo.applyWrites(
-				[
-					{
-						action: WriteOpAction.Delete,
-						collection: input.collection,
-						rkey: input.rkey,
-					},
-				],
-				ctx.keypair,
-			);
+			const op: RecordWriteOp = {
+				action: WriteOpAction.Delete,
+				collection: input.collection,
+				rkey: input.rkey,
+			};
+			const { commitData } = await commitWrites(ctx, firehose, [op]);
 			return json({
-				commit: { cid: ctx.repo.cid.toString(), rev: ctx.repo.commit.rev },
+				commit: { cid: commitData.cid.toString(), rev: commitData.rev },
 			});
 		},
 	});
@@ -281,6 +283,12 @@ export function registerRepoHandlers(
 					size: bytes.length,
 				},
 			});
+		},
+	});
+
+	router.addQuery(ComAtprotoRepoListMissingBlobs, {
+		handler() {
+			return json({ blobs: [] });
 		},
 	});
 }
