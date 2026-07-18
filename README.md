@@ -122,6 +122,20 @@ _atproto.<your-handle>  TXT  "did=did:web:<your-domain>"
 
 ハンドルとドメインが同一の場合は `_atproto.<your-domain>` に追加します。
 
+## リレーへの登録
+
+セットアップ完了後、Bluesky のリレーにクロールをリクエストして AppView にインデックスされるようにします。
+
+```sh
+curl -X POST https://bsky.network/xrpc/com.atproto.sync.requestCrawl \
+  -H "Content-Type: application/json" \
+  -d '{"hostname": "<your-pds-hostname>"}'
+```
+
+`<your-pds-hostname>` はスキームなしのホスト名です (例: `pds.example.com`)。
+
+これを行わないと Bluesky の AppView にアカウントが認識されず、`app.bsky.*` 系の操作が失敗します。
+
 ## 補足
 
 - 初回リクエスト時に GitHub リポジトリが空であれば、自動的にリポジトリが初期化されます。
