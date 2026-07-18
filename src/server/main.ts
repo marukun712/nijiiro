@@ -57,4 +57,4 @@ const handler = createProxyMiddleware(
 	keypair,
 	auth,
 );
-Deno.serve({ port: 8000 }, handler);
+Deno.serve({ port: 8080 }, handler);
