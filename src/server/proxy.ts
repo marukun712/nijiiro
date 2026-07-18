@@ -48,6 +48,8 @@ async function proxyToAppView(
 	});
 }
 
+const DID_JSON_PATH = new URL("../../well-known/did.json", import.meta.url);
+
 export function createProxyMiddleware(
 	next: (req: Request) => Promise<Response> | Response,
 	did: string,
@@ -56,6 +58,14 @@ export function createProxyMiddleware(
 ): (req: Request) => Promise<Response> {
 	return async (req: Request) => {
 		const url = new URL(req.url);
+
+		if (url.pathname === "/.well-known/did.json") {
+			const content = await Deno.readTextFile(DID_JSON_PATH);
+			return new Response(content, {
+				headers: { "content-type": "application/json" },
+			});
+		}
+
 		const nsid = nsidFromPath(url.pathname);
 
 		if (nsid?.startsWith("app.bsky.")) {
