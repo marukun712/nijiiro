@@ -2,6 +2,7 @@
 import {
 	ComAtprotoServerCreateSession,
 	ComAtprotoServerDeleteSession,
+	ComAtprotoServerDescribeServer,
 	ComAtprotoServerGetSession,
 	ComAtprotoServerRefreshSession,
 } from "@atcute/atproto";
@@ -33,6 +34,15 @@ export function registerSessionHandlers(
 	}
 	const did = auth.serviceDid;
 	const validHandle = handle;
+	router.addQuery(ComAtprotoServerDescribeServer.mainSchema, {
+		handler() {
+			return json({
+				did,
+				availableUserDomains: [],
+			});
+		},
+	});
+
 	router.addProcedure(ComAtprotoServerCreateSession.mainSchema, {
 		async handler({ input }) {
 			const { identifier, password: inputPassword } = input;
