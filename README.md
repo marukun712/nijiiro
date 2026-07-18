@@ -1,15 +1,12 @@
 # nijiiro
 
-nijiiro は、GitHub リポジトリをストレージとして使用するサーバーレスの ATProtocol PDS プロキシです。
+nijiiroは、GitHubをストレージとして使用するサーバーレスのATProtocol PDSです。
 
-## 概要
-
-- ATProto リポジトリのデータ (ブロック、ref) を GitHub リポジトリにファイルとして保存します
-- DID の解決には `did:web` を使用します
+> [!WARNING]
+> このリポジトリは、個人の実験プロジェクトです。セキュリティ的な監査は受けていませんので、自己責任での使用をお願いします。
 
 ## 前提条件
 
-- [Deno](https://deno.com/) v2 以上
 - GitHub アカウントと、ブロックストレージ用の**空のリポジトリ**
 - HTTPS に対応した管理下のドメイン (例: `example.com`)
 - そのドメインで `/.well-known/did.json` を静的ファイルとして配信できること
@@ -112,16 +109,6 @@ deno task start
 
 サーバーはポート `8000` で起動します。
 
-## ハンドルの DNS 検証
-
-AT Protocol のハンドル検証を DNS で行う場合、ドメインに TXT レコードを追加します:
-
-```
-_atproto.<your-handle>  TXT  "did=did:web:<your-domain>"
-```
-
-ハンドルとドメインが同一の場合は `_atproto.<your-domain>` に追加します。
-
 ## リレーへの登録
 
 セットアップ完了後、Bluesky のリレーにクロールをリクエストして AppView にインデックスされるようにします。
@@ -136,8 +123,8 @@ curl -X POST https://bsky.network/xrpc/com.atproto.sync.requestCrawl \
 
 これを行わないと Bluesky の AppView にアカウントが認識されず、`app.bsky.*` 系の操作が失敗します。
 
-## 補足
+## 実装予定
 
-- 初回リクエスト時に GitHub リポジトリが空であれば、自動的にリポジトリが初期化されます。
-- すべてのブロックは GitHub リポジトリの `blocks/` 以下にファイルとして保存され、現在のルート CID は `refs/root` に記録されます。
-- セッション作成 (`com.atproto.server.createSession`) の際、識別子にはハンドル、パスワードには `ADMIN_PASSWORD` を使用します。
+- Bluesky AppView以外の対応
+- OAuth
+- GitHub以外のGit Remoteへの拡張
