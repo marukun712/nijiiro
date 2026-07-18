@@ -5,11 +5,10 @@ import type { Firehose } from "./firehose.ts";
 export function registerSyncHandlers(router: XRPCRouter, firehose: Firehose) {
 	router.addSubscription(ComAtprotoSyncSubscribeRepos, {
 		async *handler({ signal }) {
-			const queue = firehose.subscribe();
-			signal.addEventListener("abort", () => firehose.unsubscribe(queue));
+			const stream = firehose.subscribe();
+			signal.addEventListener("abort", () => stream.cancel());
 
-			for await (const message of queue) {
-				if (signal.aborted) return;
+			for await (const message of stream) {
 				yield message;
 			}
 		},

@@ -4,7 +4,6 @@ import {
 	ComAtprotoRepoDeleteRecord,
 	ComAtprotoRepoDescribeRepo,
 	ComAtprotoRepoGetRecord,
-	ComAtprotoRepoListMissingBlobs,
 	ComAtprotoRepoListRecords,
 	ComAtprotoRepoPutRecord,
 	ComAtprotoRepoUploadBlob,
@@ -283,12 +282,6 @@ export function registerRepoHandlers(
 					size: bytes.length,
 				},
 			});
-		},
-	});
-
-	router.addQuery(ComAtprotoRepoListMissingBlobs, {
-		handler() {
-			return json({ blobs: [] });
 		},
 	});
 }

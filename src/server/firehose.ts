@@ -8,59 +8,27 @@ import { blocksToCarFile } from "@atproto/repo";
 
 type FirehoseMessage = ComAtprotoSyncSubscribeRepos.$message;
 
-class AsyncQueue<T> {
-	private items: T[] = [];
-	private waiting: ((result: IteratorResult<T>) => void)[] = [];
-	private closed = false;
-
-	push(item: T) {
-		const waiter = this.waiting.shift();
-		if (waiter) {
-			waiter({ value: item, done: false });
-			return;
-		}
-		this.items.push(item);
-	}
-
-	close() {
-		this.closed = true;
-		for (const waiter of this.waiting) waiter({ value: undefined, done: true });
-		this.waiting = [];
-	}
-
-	[Symbol.asyncIterator](): AsyncIterator<T> {
-		return {
-			next: (): Promise<IteratorResult<T>> => {
-				const item = this.items.shift();
-				if (item !== undefined) {
-					return Promise.resolve({ value: item, done: false });
-				}
-				if (this.closed) {
-					return Promise.resolve({ value: undefined, done: true });
-				}
-				return new Promise((resolve) => this.waiting.push(resolve));
-			},
-		};
-	}
-}
-
 export class Firehose {
 	private seq = 0;
-	private queues = new Set<AsyncQueue<FirehoseMessage>>();
+	private controllers = new Set<
+		ReadableStreamDefaultController<FirehoseMessage>
+	>();
 
-	subscribe(): AsyncQueue<FirehoseMessage> {
-		const queue = new AsyncQueue<FirehoseMessage>();
-		this.queues.add(queue);
-		return queue;
-	}
-
-	unsubscribe(queue: AsyncQueue<FirehoseMessage>) {
-		queue.close();
-		this.queues.delete(queue);
+	subscribe(): ReadableStream<FirehoseMessage> {
+		let controller!: ReadableStreamDefaultController<FirehoseMessage>;
+		return new ReadableStream<FirehoseMessage>({
+			start: (c) => {
+				controller = c;
+				this.controllers.add(c);
+			},
+			cancel: () => {
+				this.controllers.delete(controller);
+			},
+		});
 	}
 
 	private broadcast(message: FirehoseMessage) {
-		for (const queue of this.queues) queue.push(message);
+		for (const controller of this.controllers) controller.enqueue(message);
 	}
 
 	async publishCommit(
