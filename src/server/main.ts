@@ -7,6 +7,7 @@ import { GitHubRepoStorage } from "../blockstore/github.ts";
 import { createJwtKey } from "./auth.ts";
 import { Firehose } from "./firehose.ts";
 import { registerRepoHandlers } from "./handler.ts";
+import { createProxyMiddleware } from "./proxy.ts";
 import type { RepoContext } from "./repo.ts";
 import { registerSessionHandlers } from "./session.ts";
 import { registerSyncHandlers } from "./sync.ts";
@@ -51,4 +52,10 @@ registerRepoHandlers(router, ctx, firehose, REPO_HANDLE, auth);
 registerSessionHandlers(router, auth, REPO_HANDLE, ADMIN_PASSWORD, kv);
 registerSyncHandlers(router, firehose);
 
-Deno.serve({ port: 8000 }, router.fetch);
+const handler = createProxyMiddleware(
+	router.fetch.bind(router),
+	REPO_DID,
+	keypair,
+	auth,
+);
+Deno.serve({ port: 8000 }, handler);
