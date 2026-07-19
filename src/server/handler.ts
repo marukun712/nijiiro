@@ -171,8 +171,9 @@ export function registerRepoHandlers(
 				);
 				await verifyAccessToken(request, auth);
 				const record = toLexMap(input.record);
+				const existing = await ctx.repo.getRecord(input.collection, input.rkey);
 				const op: RecordWriteOp = {
-					action: WriteOpAction.Update,
+					action: existing ? WriteOpAction.Update : WriteOpAction.Create,
 					collection: input.collection,
 					rkey: input.rkey,
 					record,

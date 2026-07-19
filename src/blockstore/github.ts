@@ -87,7 +87,7 @@ export class GitHubRepoStorage extends ReadableBlockstore {
 		return cid;
 	}
 
-	async updateRoot(cid: Cid, _rev: string): Promise<void> {
+	async updateRoot(cid: Cid): Promise<void> {
 		console.log("[github] updateRoot:", cid.toString());
 		await this.putFile(
 			"refs/root",
@@ -116,7 +116,7 @@ export class GitHubRepoStorage extends ReadableBlockstore {
 		return { blocks, missing };
 	}
 
-	async putBlock(cid: Cid, block: Uint8Array, _rev: string): Promise<void> {
+	async putBlock(cid: Cid, block: Uint8Array): Promise<void> {
 		if (await this.has(cid)) {
 			console.log(
 				"[github] putBlock skipped (already exists):",
@@ -128,13 +128,13 @@ export class GitHubRepoStorage extends ReadableBlockstore {
 		await this.putFile(this.blockPath(cid), block, `put ${cid.toString()}`);
 	}
 
-	async putMany(blocks: BlockMap, rev: string): Promise<void> {
-		for (const [cid, bytes] of blocks) await this.putBlock(cid, bytes, rev);
+	async putMany(blocks: BlockMap): Promise<void> {
+		for (const [cid, bytes] of blocks) await this.putBlock(cid, bytes);
 	}
 
 	async applyCommit(commit: CommitData): Promise<void> {
-		await this.putMany(commit.newBlocks, commit.rev);
-		await this.updateRoot(commit.cid, commit.rev);
+		await this.putMany(commit.newBlocks);
+		await this.updateRoot(commit.cid);
 	}
 
 	async putBlob(bytes: Uint8Array): Promise<Cid> {
