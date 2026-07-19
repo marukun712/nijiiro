@@ -99,6 +99,7 @@ export class Firehose {
 			commitData.cid,
 			commitData.newBlocks,
 		);
+		const { $bytes } = toBytes(carBytes);
 		const repoOps = ops.map((op, i) => {
 			const cid = opCids[i];
 			return {
@@ -117,7 +118,7 @@ export class Firehose {
 			commit: { $link: commitData.cid.toString() },
 			rev: commitData.rev,
 			since: commitData.since,
-			blocks: toBytes(carBytes),
+			blocks: { $bytes },
 			ops: repoOps,
 			blobs: [],
 			time: new Date().toISOString(),
