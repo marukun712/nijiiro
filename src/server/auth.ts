@@ -11,15 +11,15 @@ const didSchema = z.string().refine(isDid);
 const accessTokenShapeSchema = z.object({
 	sub: didSchema,
 	aud: didSchema,
-	lxm: z.undefined(),
-	cnf: z.undefined(),
+	lxm: z.undefined().optional(),
+	cnf: z.undefined().optional(),
 });
 const accessScopeSchema = z.object({ scope: z.literal(ACCESS_SCOPE) });
 
 const refreshTokenShapeSchema = z.object({
 	sub: didSchema,
-	lxm: z.undefined(),
-	cnf: z.undefined(),
+	lxm: z.undefined().optional(),
+	cnf: z.undefined().optional(),
 });
 const jtiSchema = z.object({ jti: z.string() });
 const refreshScopeSchema = z.object({ scope: z.literal(REFRESH_SCOPE) });
