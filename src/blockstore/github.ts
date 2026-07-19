@@ -43,6 +43,7 @@ export class GitHubRepoStorage extends ReadableBlockstore {
 				path,
 				ref: this.branch,
 			});
+			console.log("[github] getFile ok:", path);
 			const data = res.data;
 			if (!Array.isArray(data) && data.type === "file") {
 				return {
@@ -50,8 +51,8 @@ export class GitHubRepoStorage extends ReadableBlockstore {
 					sha: data.sha,
 				};
 			} else return null;
-		} catch {
-			console.log("[github] getFile not found:", path);
+		} catch (err) {
+			console.log("[github] getFile error:", path, err);
 			return null;
 		}
 	}
