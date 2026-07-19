@@ -24,7 +24,7 @@ export function registerSyncHandlers(
 ) {
 	router.addQuery(ComAtprotoSyncGetRepo, {
 		handler: ({ params }) =>
-			withErrorLog("getRepo", async () => {
+			withErrorLog("getRepo", () => {
 				console.log("[handler] getRepo:", params.did);
 
 				async function* allBlocks() {
@@ -33,9 +33,11 @@ export function registerSyncHandlers(
 					yield* ctx.repo.data.carBlockStream();
 				}
 
-				return new Response(
-					ReadableStream.from(writeCarStream(ctx.repo.cid, allBlocks())),
-					{ headers: { "content-type": "application/vnd.ipld.car" } },
+				return Promise.resolve(
+					new Response(
+						ReadableStream.from(writeCarStream(ctx.repo.cid, allBlocks())),
+						{ headers: { "content-type": "application/vnd.ipld.car" } },
+					),
 				);
 			}),
 	});
