@@ -1,19 +1,15 @@
+import { Buffer } from "node:buffer";
 import { type Cid, cidForRawBytes, parseCid } from "@atproto/lex-data";
 import type { CommitData } from "@atproto/repo";
 import { BlockMap, ReadableBlockstore } from "@atproto/repo";
 import { Octokit } from "octokit";
 
 function toBase64(bytes: Uint8Array): string {
-	let bin = "";
-	for (const b of bytes) bin += String.fromCharCode(b);
-	return btoa(bin);
+	return Buffer.from(bytes).toString("base64");
 }
 
 function fromBase64(b64: string): Uint8Array {
-	const bin = atob(b64);
-	const out = new Uint8Array(bin.length);
-	for (let i = 0; i < bin.length; i++) out[i] = bin.charCodeAt(i);
-	return out;
+	return new Uint8Array(Buffer.from(b64, "base64"));
 }
 
 export class GitHubRepoStorage extends ReadableBlockstore {

@@ -17,7 +17,6 @@
 		"@atproto/api": "npm:@atproto/api@^0.20.30",
 		"@atproto/crypto": "npm:@atproto/crypto@^0.5.4",
 		"@atproto/lex-data": "npm:@atproto/lex-data@^0.1.5",
-		"@atproto/pds": "npm:@atproto/pds@^0.5.19",
 		"@atproto/repo": "npm:@atproto/repo@^0.10.6",
 		"@atproto/xrpc-server": "npm:@atproto/xrpc-server@^0.11.10",
 		"@noble/hashes": "jsr:@noble/hashes@^2.2.0",
