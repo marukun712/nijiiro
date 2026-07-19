@@ -5,20 +5,52 @@ import { InternalServerError } from "@atcute/xrpc-server";
 import type { Cid } from "@atproto/lex-data";
 import type { CommitData, RecordWriteOp } from "@atproto/repo";
 import { blocksToCarFile } from "@atproto/repo";
+import type { GitHubRepoStorage } from "../blockstore/github.ts";
 
 type FirehoseMessage = ComAtprotoSyncSubscribeRepos.$message;
 
+const PAGE_SIZE = 500;
+
 export class Firehose {
-	private seq = 0;
+	private seq: number;
+	private storage: GitHubRepoStorage;
+	private kv: Deno.Kv;
 	private controllers = new Set<
 		ReadableStreamDefaultController<FirehoseMessage>
 	>();
 
-	subscribe(): ReadableStream<FirehoseMessage> {
+	constructor(initialSeq: number, storage: GitHubRepoStorage, kv: Deno.Kv) {
+		this.seq = initialSeq;
+		this.storage = storage;
+		this.kv = kv;
+	}
+
+	subscribe(cursor?: number): ReadableStream<FirehoseMessage> {
 		let controller!: ReadableStreamDefaultController<FirehoseMessage>;
 		return new ReadableStream<FirehoseMessage>({
-			start: (c) => {
+			start: async (c) => {
 				controller = c;
+
+				if (cursor !== undefined) {
+					let fromSeq = cursor + 1;
+					while (true) {
+						const iter = this.kv.list<FirehoseMessage>(
+							{
+								start: ["firehose", "event", fromSeq],
+								end: ["firehose", "event", Number.MAX_SAFE_INTEGER],
+							},
+							{ limit: PAGE_SIZE },
+						);
+						let count = 0;
+						for await (const entry of iter) {
+							c.enqueue(entry.value);
+							fromSeq = (entry.key[2] as number) + 1;
+							count++;
+						}
+						if (count < PAGE_SIZE) break;
+					}
+				}
+
 				this.controllers.add(c);
 				console.log(
 					"[firehose] subscriber connected (total:",
@@ -73,7 +105,7 @@ export class Firehose {
 			};
 		});
 
-		this.broadcast({
+		const message: FirehoseMessage = {
 			$type: "com.atproto.sync.subscribeRepos#commit",
 			seq: this.seq,
 			rebase: false,
@@ -86,6 +118,11 @@ export class Firehose {
 			ops: repoOps,
 			blobs: [],
 			time: new Date().toISOString(),
-		});
+		};
+
+		await this.kv.set(["firehose", "event", this.seq], message);
+		await this.storage.updateSeq(this.seq);
+
+		this.broadcast(message);
 	}
 }

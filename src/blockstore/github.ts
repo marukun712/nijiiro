@@ -96,6 +96,21 @@ export class GitHubRepoStorage extends ReadableBlockstore {
 		);
 	}
 
+	async getSeq(): Promise<number> {
+		const file = await this.getFile("refs/seq");
+		if (!file) return 0;
+		return Number(new TextDecoder().decode(file.bytes).trim());
+	}
+
+	async updateSeq(seq: number): Promise<void> {
+		console.log("[github] updateSeq:", seq);
+		await this.putFile(
+			"refs/seq",
+			new TextEncoder().encode(String(seq)),
+			`seq -> ${seq}`,
+		);
+	}
+
 	async getBytes(cid: Cid): Promise<Uint8Array | null> {
 		const file = await this.getFile(this.blockPath(cid));
 		return file ? file.bytes : null;

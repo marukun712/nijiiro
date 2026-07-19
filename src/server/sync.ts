@@ -62,8 +62,9 @@ export function registerSyncHandlers(
 	});
 
 	router.addSubscription(ComAtprotoSyncSubscribeRepos, {
-		async *handler({ signal }) {
-			const stream = firehose.subscribe();
+		async *handler({ params, signal }) {
+			const cursor = "cursor" in params ? (params.cursor as number) : undefined;
+			const stream = firehose.subscribe(cursor);
 			const reader = stream.getReader();
 			signal.addEventListener("abort", () => reader.cancel());
 

@@ -52,7 +52,9 @@ console.log("[main] repo ready:", ctx.repo.did);
 
 const auth = { jwtKey: createJwtKey(JWT_SECRET), serviceDid: REPO_DID };
 
-const firehose = new Firehose();
+const initialSeq = await storage.getSeq();
+const kv = await Deno.openKv();
+const firehose = new Firehose(initialSeq, storage, kv);
 const ws = createDenoWebSocket();
 
 const router = new XRPCRouter({ websocket: ws, middlewares: [cors()] });
