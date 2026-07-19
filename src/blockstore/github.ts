@@ -2,6 +2,7 @@ import { Buffer } from "node:buffer";
 import { type Cid, cidForRawBytes, parseCid } from "@atproto/lex-data";
 import type { CommitData } from "@atproto/repo";
 import { BlockMap, ReadableBlockstore } from "@atproto/repo";
+import { bytesToHex } from "@noble/hashes/utils.js";
 import { Octokit } from "octokit";
 
 function toBase64(bytes: Uint8Array): string {
@@ -42,8 +43,10 @@ export class GitHubRepoStorage extends ReadableBlockstore {
 			console.log("[github] getFile ok:", path);
 			const data = res.data;
 			if (!Array.isArray(data) && data.type === "file") {
+				const bytes = fromBase64(data.content.replace(/\n/g, ""));
+				console.log(bytesToHex(bytes));
 				return {
-					bytes: fromBase64(data.content.replace(/\n/g, "")),
+					bytes: bytes,
 					sha: data.sha,
 				};
 			} else return null;
