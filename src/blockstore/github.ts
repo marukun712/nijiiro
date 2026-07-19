@@ -42,7 +42,6 @@ export class GitHubRepoStorage extends ReadableBlockstore {
 			});
 			console.log("[github] getFile ok:", path);
 			const data = res.data;
-			if (!Array.isArray(data) && data.type === "file") console.log("[github] raw content:", data.content.slice(0, 40));
 			if (!Array.isArray(data) && data.type === "file") {
 				const bytes = fromBase64(data.content.replace(/\n/g, ""));
 				console.log(bytesToHex(bytes));
