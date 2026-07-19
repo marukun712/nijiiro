@@ -1,17 +1,9 @@
-import { Buffer } from "node:buffer";
 import { type Cid, cidForRawBytes, parseCid } from "@atproto/lex-data";
 import type { CommitData } from "@atproto/repo";
 import { BlockMap, ReadableBlockstore } from "@atproto/repo";
 import { bytesToHex } from "@noble/hashes/utils.js";
+import { encodeBase64 } from "@std/encoding";
 import { Octokit } from "octokit";
-
-function toBase64(bytes: Uint8Array): string {
-	return Buffer.from(bytes).toString("base64");
-}
-
-function fromBase64(b64: string): Uint8Array {
-	return new Uint8Array(Buffer.from(b64, "base64"));
-}
 
 export class GitHubRepoStorage extends ReadableBlockstore {
 	octokit: Octokit;
@@ -42,8 +34,9 @@ export class GitHubRepoStorage extends ReadableBlockstore {
 			});
 			console.log("[github] getFile ok:", path);
 			const data = res.data;
-			if (!Array.isArray(data) && data.type === "file") {
-				const bytes = fromBase64(data.content.replace(/\n/g, ""));
+			if (!Array.isArray(data) && data.type === "file" && data.download_url) {
+				const raw = await fetch(data.download_url);
+				const bytes = new Uint8Array(await raw.arrayBuffer());
 				console.log(bytesToHex(bytes));
 				return {
 					bytes: bytes,
@@ -64,7 +57,7 @@ export class GitHubRepoStorage extends ReadableBlockstore {
 			repo: this.repo,
 			path,
 			message,
-			content: toBase64(bytes),
+			content: encodeBase64(bytes),
 			sha: existing?.sha,
 			branch: this.branch,
 		});

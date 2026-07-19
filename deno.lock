@@ -3,6 +3,7 @@
   "specifiers": {
     "jsr:@noble/hashes@^2.2.0": "2.2.0",
     "jsr:@std/assert@1": "1.0.19",
+    "jsr:@std/encoding@^1.0.11": "1.0.11",
     "jsr:@std/internal@^1.0.12": "1.0.14",
     "npm:@atcute/atproto@^4.0.3": "4.0.3_@atcute+lexicons@2.0.3",
     "npm:@atcute/cbor@^2.3.6": "2.3.6_@atcute+cid@2.4.2",
@@ -28,6 +29,9 @@
       "dependencies": [
         "jsr:@std/internal"
       ]
+    },
+    "@std/encoding@1.0.11": {
+      "integrity": "e7cef2f0b3153bccc17431e7c864a1de03a4b6d9647389c43e08aaa775d37385"
     },
     "@std/internal@1.0.14": {
       "integrity": "291516b3d4c35024d6ffbc0a9df5bf4c64116e05b50012cf846710152d2ffdf7"
@@ -1096,6 +1100,7 @@
     "dependencies": [
       "jsr:@noble/hashes@^2.2.0",
       "jsr:@std/assert@1",
+      "jsr:@std/encoding@^1.0.11",
       "npm:@atcute/atproto@^4.0.3",
       "npm:@atcute/cbor@^2.3.6",
       "npm:@atcute/lexicons@^2.0.3",
