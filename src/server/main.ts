@@ -58,7 +58,7 @@ const ws = createDenoWebSocket();
 const router = new XRPCRouter({ websocket: ws, middlewares: [cors()] });
 registerRepoHandlers(router, ctx, firehose, REPO_HANDLE, auth);
 registerSessionHandlers(router, auth, REPO_HANDLE, ADMIN_PASSWORD);
-registerSyncHandlers(router, firehose);
+registerSyncHandlers(router, firehose, ctx);
 
 const handler = createProxyMiddleware(
 	router.fetch.bind(router),
