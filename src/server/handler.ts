@@ -24,6 +24,7 @@ import type { AuthContext } from "./auth.ts";
 import { verifyAccessToken } from "./auth.ts";
 import type { Firehose } from "./firehose.ts";
 import type { RepoContext } from "./repo.ts";
+import { withErrorLog } from "./util.ts";
 
 type WriteEntry =
 	| ComAtprotoRepoApplyWrites.Create
@@ -110,204 +111,221 @@ export function registerRepoHandlers(
 	auth: AuthContext,
 ) {
 	router.addProcedure(ComAtprotoRepoApplyWrites, {
-		async handler({ input, request }) {
-			console.log("[handler] applyWrites:", input.writes.length, "ops");
-			await verifyAccessToken(request, auth);
-			const ops = input.writes.map(toWriteOp);
-			const { commitData, opCids } = await commitWrites(ctx, firehose, ops);
+		handler: ({ input, request }) =>
+			withErrorLog("applyWrites", async () => {
+				console.log("[handler] applyWrites:", input.writes.length, "ops");
+				await verifyAccessToken(request, auth);
+				const ops = input.writes.map(toWriteOp);
+				const { commitData, opCids } = await commitWrites(ctx, firehose, ops);
 
-			const results = ops.map((op, i) => {
-				if (op.action === WriteOpAction.Delete) {
+				const results = ops.map((op, i) => {
+					if (op.action === WriteOpAction.Delete) {
+						return {
+							$type: "com.atproto.repo.applyWrites#deleteResult" as const,
+						};
+					}
+					const cid = requireCid(opCids[i], `${op.collection}/${op.rkey}`);
 					return {
-						$type: "com.atproto.repo.applyWrites#deleteResult" as const,
+						$type: `com.atproto.repo.applyWrites#${op.action}Result` as const,
+						uri: toUri(ctx.repo.did, op.collection, op.rkey),
+						cid: cid.toString(),
 					};
-				}
-				const cid = requireCid(opCids[i], `${op.collection}/${op.rkey}`);
-				return {
-					$type: `com.atproto.repo.applyWrites#${op.action}Result` as const,
-					uri: toUri(ctx.repo.did, op.collection, op.rkey),
-					cid: cid.toString(),
-				};
-			});
+				});
 
-			return json({
-				commit: { cid: commitData.cid.toString(), rev: commitData.rev },
-				results,
-			});
-		},
+				return json({
+					commit: { cid: commitData.cid.toString(), rev: commitData.rev },
+					results,
+				});
+			}),
 	});
 
 	router.addProcedure(ComAtprotoRepoCreateRecord, {
-		async handler({ input, request }) {
-			console.log("[handler] createRecord:", input.collection);
-			await verifyAccessToken(request, auth);
-			const rkey = input.rkey ?? tidNow();
-			const record = toLexMap(input.record);
-			const op: RecordWriteOp = {
-				action: WriteOpAction.Create,
-				collection: input.collection,
-				rkey,
-				record,
-			};
-			const { commitData, opCids } = await commitWrites(ctx, firehose, [op]);
-			const cid = requireCid(opCids[0], `${input.collection}/${rkey}`);
-			return json({
-				uri: toUri(ctx.repo.did, input.collection, rkey),
-				cid: cid.toString(),
-				commit: { cid: commitData.cid.toString(), rev: commitData.rev },
-			});
-		},
+		handler: ({ input, request }) =>
+			withErrorLog("createRecord", async () => {
+				console.log("[handler] createRecord:", input.collection);
+				await verifyAccessToken(request, auth);
+				const rkey = input.rkey ?? tidNow();
+				const record = toLexMap(input.record);
+				const op: RecordWriteOp = {
+					action: WriteOpAction.Create,
+					collection: input.collection,
+					rkey,
+					record,
+				};
+				const { commitData, opCids } = await commitWrites(ctx, firehose, [op]);
+				const cid = requireCid(opCids[0], `${input.collection}/${rkey}`);
+				return json({
+					uri: toUri(ctx.repo.did, input.collection, rkey),
+					cid: cid.toString(),
+					commit: { cid: commitData.cid.toString(), rev: commitData.rev },
+				});
+			}),
 	});
 
 	router.addProcedure(ComAtprotoRepoPutRecord, {
-		async handler({ input, request }) {
-			console.log("[handler] putRecord:", `${input.collection}/${input.rkey}`);
-			await verifyAccessToken(request, auth);
-			const record = toLexMap(input.record);
-			const op: RecordWriteOp = {
-				action: WriteOpAction.Update,
-				collection: input.collection,
-				rkey: input.rkey,
-				record,
-			};
-			const { commitData, opCids } = await commitWrites(ctx, firehose, [op]);
-			const cid = requireCid(opCids[0], `${input.collection}/${input.rkey}`);
-			return json({
-				uri: toUri(ctx.repo.did, input.collection, input.rkey),
-				cid: cid.toString(),
-				commit: { cid: commitData.cid.toString(), rev: commitData.rev },
-			});
-		},
+		handler: ({ input, request }) =>
+			withErrorLog("putRecord", async () => {
+				console.log(
+					"[handler] putRecord:",
+					`${input.collection}/${input.rkey}`,
+				);
+				await verifyAccessToken(request, auth);
+				const record = toLexMap(input.record);
+				const op: RecordWriteOp = {
+					action: WriteOpAction.Update,
+					collection: input.collection,
+					rkey: input.rkey,
+					record,
+				};
+				const { commitData, opCids } = await commitWrites(ctx, firehose, [op]);
+				const cid = requireCid(opCids[0], `${input.collection}/${input.rkey}`);
+				return json({
+					uri: toUri(ctx.repo.did, input.collection, input.rkey),
+					cid: cid.toString(),
+					commit: { cid: commitData.cid.toString(), rev: commitData.rev },
+				});
+			}),
 	});
 
 	router.addProcedure(ComAtprotoRepoDeleteRecord, {
-		async handler({ input, request }) {
-			console.log(
-				"[handler] deleteRecord:",
-				`${input.collection}/${input.rkey}`,
-			);
-			await verifyAccessToken(request, auth);
-			const op: RecordWriteOp = {
-				action: WriteOpAction.Delete,
-				collection: input.collection,
-				rkey: input.rkey,
-			};
-			const { commitData } = await commitWrites(ctx, firehose, [op]);
-			return json({
-				commit: { cid: commitData.cid.toString(), rev: commitData.rev },
-			});
-		},
+		handler: ({ input, request }) =>
+			withErrorLog("deleteRecord", async () => {
+				console.log(
+					"[handler] deleteRecord:",
+					`${input.collection}/${input.rkey}`,
+				);
+				await verifyAccessToken(request, auth);
+				const op: RecordWriteOp = {
+					action: WriteOpAction.Delete,
+					collection: input.collection,
+					rkey: input.rkey,
+				};
+				const { commitData } = await commitWrites(ctx, firehose, [op]);
+				return json({
+					commit: { cid: commitData.cid.toString(), rev: commitData.rev },
+				});
+			}),
 	});
 
 	router.addQuery(ComAtprotoRepoGetRecord, {
-		async handler({ params }) {
-			console.log(
-				"[handler] getRecord:",
-				`${params.collection}/${params.rkey}`,
-			);
-			const value = await ctx.repo.getRecord(params.collection, params.rkey);
-			if (!value) {
-				return new Response(
-					JSON.stringify({
-						error: "RecordNotFound",
-						message: "record not found",
-					}),
-					{ status: 400, headers: { "content-type": "application/json" } },
+		handler: ({ params }) =>
+			withErrorLog("getRecord", async () => {
+				console.log(
+					"[handler] getRecord:",
+					`${params.collection}/${params.rkey}`,
 				);
-			}
-			const cid = requireCid(
-				await ctx.repo.data.get(`${params.collection}/${params.rkey}`),
-				`${params.collection}/${params.rkey}`,
-			);
-			return json({
-				uri: toUri(ctx.repo.did, params.collection, params.rkey),
-				cid: cid.toString(),
-				value: toLexMap(value),
-			});
-		},
+				const value = await ctx.repo.getRecord(params.collection, params.rkey);
+				if (!value) {
+					return new Response(
+						JSON.stringify({
+							error: "RecordNotFound",
+							message: "record not found",
+						}),
+						{ status: 400, headers: { "content-type": "application/json" } },
+					);
+				}
+				const cid = requireCid(
+					await ctx.repo.data.get(`${params.collection}/${params.rkey}`),
+					`${params.collection}/${params.rkey}`,
+				);
+				return json({
+					uri: toUri(ctx.repo.did, params.collection, params.rkey),
+					cid: cid.toString(),
+					value: toLexMap(value),
+				});
+			}),
 	});
 
 	router.addQuery(ComAtprotoRepoListRecords, {
-		async handler({ params }) {
-			console.log(
-				"[handler] listRecords:",
-				params.collection,
-				"limit:",
-				params.limit ?? 50,
-			);
-			const limit = params.limit ?? 50;
-			const records: { uri: ResourceUri; cid: string; value: LexMap }[] = [];
+		handler: ({ params }) =>
+			withErrorLog("listRecords", async () => {
+				console.log(
+					"[handler] listRecords:",
+					params.collection,
+					"limit:",
+					params.limit ?? 50,
+				);
+				const limit = params.limit ?? 50;
+				const records: { uri: ResourceUri; cid: string; value: LexMap }[] = [];
 
-			for await (const entry of ctx.repo.walkRecords(`${params.collection}/`)) {
-				if (entry.collection !== params.collection) break;
-				if (records.length >= limit) break;
-				records.push({
-					uri: toUri(ctx.repo.did, entry.collection, entry.rkey),
-					cid: entry.cid.toString(),
-					value: toLexMap(entry.record),
-				});
-			}
+				for await (const entry of ctx.repo.walkRecords(
+					`${params.collection}/`,
+				)) {
+					if (entry.collection !== params.collection) break;
+					if (records.length >= limit) break;
+					records.push({
+						uri: toUri(ctx.repo.did, entry.collection, entry.rkey),
+						cid: entry.cid.toString(),
+						value: toLexMap(entry.record),
+					});
+				}
 
-			return json({ records });
-		},
+				return json({ records });
+			}),
 	});
 
 	router.addQuery(ComAtprotoRepoDescribeRepo, {
-		async handler() {
-			if (!isHandle(handle)) {
-				throw new InternalServerError({
-					message: `configured handle is invalid: ${handle}`,
-				});
-			}
-			if (!isDid(ctx.repo.did)) {
-				throw new InternalServerError({
-					message: `repo did is invalid: ${ctx.repo.did}`,
-				});
-			}
-
-			const collectionSet = new Set<string>();
-			for await (const entry of ctx.repo.walkRecords()) {
-				collectionSet.add(entry.collection);
-			}
-
-			const collections: Nsid[] = [];
-			for (const c of collectionSet) {
-				if (!isNsid(c)) {
+		handler: () =>
+			withErrorLog("describeRepo", async () => {
+				if (!isHandle(handle)) {
 					throw new InternalServerError({
-						message: `collection is not a valid nsid: ${c}`,
+						message: `configured handle is invalid: ${handle}`,
 					});
 				}
-				collections.push(c);
-			}
+				if (!isDid(ctx.repo.did)) {
+					throw new InternalServerError({
+						message: `repo did is invalid: ${ctx.repo.did}`,
+					});
+				}
 
-			const didDoc: Record<string, unknown> = {};
+				const collectionSet = new Set<string>();
+				for await (const entry of ctx.repo.walkRecords()) {
+					collectionSet.add(entry.collection);
+				}
 
-			return json({
-				handle,
-				did: ctx.repo.did,
-				didDoc,
-				collections,
-				handleIsCorrect: true,
-			});
-		},
+				const collections: Nsid[] = [];
+				for (const c of collectionSet) {
+					if (!isNsid(c)) {
+						throw new InternalServerError({
+							message: `collection is not a valid nsid: ${c}`,
+						});
+					}
+					collections.push(c);
+				}
+
+				const didDoc: Record<string, unknown> = {};
+
+				return json({
+					handle,
+					did: ctx.repo.did,
+					didDoc,
+					collections,
+					handleIsCorrect: true,
+				});
+			}),
 	});
 
 	router.addProcedure(ComAtprotoRepoUploadBlob, {
-		async handler({ request }) {
-			await verifyAccessToken(request, auth);
-			const bytes = new Uint8Array(await request.arrayBuffer());
-			const mimeType =
-				request.headers.get("content-type") ?? "application/octet-stream";
-			console.log("[handler] uploadBlob:", mimeType, `(${bytes.length} bytes)`);
-			const cid = await ctx.storage.putBlob(bytes);
-			return json({
-				blob: {
-					$type: "blob",
-					ref: { $link: cid.toString() },
+		handler: ({ request }) =>
+			withErrorLog("uploadBlob", async () => {
+				await verifyAccessToken(request, auth);
+				const bytes = new Uint8Array(await request.arrayBuffer());
+				const mimeType =
+					request.headers.get("content-type") ?? "application/octet-stream";
+				console.log(
+					"[handler] uploadBlob:",
 					mimeType,
-					size: bytes.length,
-				},
-			});
-		},
+					`(${bytes.length} bytes)`,
+				);
+				const cid = await ctx.storage.putBlob(bytes);
+				return json({
+					blob: {
+						$type: "blob",
+						ref: { $link: cid.toString() },
+						mimeType,
+						size: bytes.length,
+					},
+				});
+			}),
 	});
 }

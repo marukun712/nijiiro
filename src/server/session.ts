@@ -9,6 +9,7 @@ import type { XRPCRouter } from "@atcute/xrpc-server";
 import { AuthRequiredError, json } from "@atcute/xrpc-server";
 import type { AuthContext } from "./auth.ts";
 import { createTokens, verifyAccessToken, verifyRefreshToken } from "./auth.ts";
+import { withErrorLog } from "./util.ts";
 
 export function registerSessionHandlers(
 	router: XRPCRouter,
@@ -25,67 +26,73 @@ export function registerSessionHandlers(
 	const did = auth.serviceDid;
 	const validHandle = handle;
 	router.addQuery(ComAtprotoServerDescribeServer.mainSchema, {
-		handler() {
-			return json({
-				did,
-				availableUserDomains: [],
-			});
-		},
+		handler: () =>
+			withErrorLog("describeServer", () =>
+				Promise.resolve(
+					json({
+						did,
+						availableUserDomains: [],
+					}),
+				),
+			),
 	});
 
 	router.addProcedure(ComAtprotoServerCreateSession.mainSchema, {
-		async handler({ input }) {
-			const { identifier, password: inputPassword } = input;
-			console.log("[session] createSession attempt:", identifier);
+		handler: ({ input }) =>
+			withErrorLog("createSession", async () => {
+				const { identifier, password: inputPassword } = input;
+				console.log("[session] createSession attempt:", identifier);
 
-			if (
-				(identifier !== validHandle && identifier !== did) ||
-				inputPassword !== password
-			) {
-				console.log("[session] createSession failed: invalid credentials");
-				throw new AuthRequiredError({
-					message: "Invalid identifier or password",
+				if (
+					(identifier !== validHandle && identifier !== did) ||
+					inputPassword !== password
+				) {
+					console.log("[session] createSession failed: invalid credentials");
+					throw new AuthRequiredError({
+						message: "Invalid identifier or password",
+					});
+				}
+
+				const { accessJwt, refreshJwt } = await createTokens(did, auth);
+				console.log("[session] createSession success:", did);
+
+				return json({
+					accessJwt,
+					refreshJwt,
+					did,
+					handle: validHandle,
+					active: true,
 				});
-			}
-
-			const { accessJwt, refreshJwt } = await createTokens(did, auth);
-			console.log("[session] createSession success:", did);
-
-			return json({
-				accessJwt,
-				refreshJwt,
-				did,
-				handle: validHandle,
-				active: true,
-			});
-		},
+			}),
 	});
 
 	router.addQuery(ComAtprotoServerGetSession.mainSchema, {
-		async handler({ request }) {
-			await verifyAccessToken(request, auth);
+		handler: ({ request }) =>
+			withErrorLog("getSession", async () => {
+				await verifyAccessToken(request, auth);
 
-			return json({
-				did,
-				handle: validHandle,
-				active: true,
-			});
-		},
+				return json({
+					did,
+					handle: validHandle,
+					active: true,
+				});
+			}),
 	});
 
 	router.addProcedure(ComAtprotoServerRefreshSession.mainSchema, {
-		async handler({ request }) {
-			console.log("[session] refreshSession");
-			const { sub } = await verifyRefreshToken(request, auth);
-			const { accessJwt, refreshJwt } = await createTokens(sub, auth);
+		handler: ({ request }) =>
+			withErrorLog("refreshSession", async () => {
+				console.log("[session] refreshSession");
+				const { sub } = await verifyRefreshToken(request, auth);
+				const { accessJwt, refreshJwt } = await createTokens(sub, auth);
 
-			return json({
-				accessJwt,
-				refreshJwt,
-				did,
-				handle: validHandle,
-				active: true,
-			});
-		},
+				return json({
+					accessJwt,
+					refreshJwt,
+					did,
+					handle: validHandle,
+					active: true,
+				});
+			}),
 	});
 }
