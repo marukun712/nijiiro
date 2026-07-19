@@ -1,6 +1,7 @@
 import { isNsid } from "@atcute/lexicons/syntax";
 import type { Keypair } from "@atproto/crypto";
 import { createServiceJwt } from "@atproto/xrpc-server";
+import { normalize } from "@std/path/posix";
 import type { AuthContext } from "./auth.ts";
 import { bearerTokenFromRequest, verifyAccessToken } from "./auth.ts";
 
@@ -58,6 +59,11 @@ export function createProxyMiddleware(
 ): (req: Request) => Promise<Response> {
 	return async (req: Request) => {
 		const url = new URL(req.url);
+		const normalizedPathname = normalize(url.pathname);
+		if (normalizedPathname !== url.pathname) {
+			url.pathname = normalizedPathname;
+			req = new Request(url.href, req);
+		}
 		console.log("[proxy]", req.method, url.pathname);
 
 		if (url.pathname === "/.well-known/did.json") {
