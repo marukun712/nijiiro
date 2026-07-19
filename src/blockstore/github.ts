@@ -1,9 +1,14 @@
 import { type Cid, cidForRawBytes, parseCid } from "@atproto/lex-data";
 import type { CommitData } from "@atproto/repo";
 import { BlockMap, ReadableBlockstore } from "@atproto/repo";
-import { bytesToHex } from "@noble/hashes/utils.js";
 import { encodeBase64 } from "@std/encoding";
 import { Octokit } from "octokit";
+
+function toBase64(bytes: Uint8Array): string {
+	const copy = new Uint8Array(bytes.byteLength);
+	copy.set(bytes);
+	return encodeBase64(copy);
+}
 
 export class GitHubRepoStorage extends ReadableBlockstore {
 	octokit: Octokit;
@@ -37,14 +42,20 @@ export class GitHubRepoStorage extends ReadableBlockstore {
 			if (!Array.isArray(data) && data.type === "file" && data.download_url) {
 				const raw = await fetch(data.download_url);
 				const bytes = new Uint8Array(await raw.arrayBuffer());
-				console.log(bytesToHex(bytes));
 				return {
 					bytes: bytes,
 					sha: data.sha,
 				};
 			} else return null;
 		} catch (err) {
-			console.log("[github] getFile error:", path, err);
+			if (
+				err &&
+				typeof err === "object" &&
+				"status" in err &&
+				err.status !== 404
+			) {
+				console.log("[github] getFile error:", path, err);
+			}
 			return null;
 		}
 	}
@@ -57,7 +68,7 @@ export class GitHubRepoStorage extends ReadableBlockstore {
 			repo: this.repo,
 			path,
 			message,
-			content: encodeBase64(bytes),
+			content: toBase64(bytes),
 			sha: existing?.sha,
 			branch: this.branch,
 		});
