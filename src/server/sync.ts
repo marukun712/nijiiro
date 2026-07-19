@@ -33,22 +33,10 @@ export function registerSyncHandlers(
 					yield* ctx.repo.data.carBlockStream();
 				}
 
-				const chunks: Uint8Array[] = [];
-				for await (const chunk of writeCarStream(ctx.repo.cid, allBlocks())) {
-					chunks.push(chunk);
-				}
-
-				const total = chunks.reduce((n, c) => n + c.length, 0);
-				const car = new Uint8Array(total);
-				let offset = 0;
-				for (const chunk of chunks) {
-					car.set(chunk, offset);
-					offset += chunk.length;
-				}
-
-				return new Response(car, {
-					headers: { "content-type": "application/vnd.ipld.car" },
-				});
+				return new Response(
+					ReadableStream.from(writeCarStream(ctx.repo.cid, allBlocks())),
+					{ headers: { "content-type": "application/vnd.ipld.car" } },
+				);
 			}),
 	});
 

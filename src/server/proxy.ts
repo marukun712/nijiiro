@@ -25,7 +25,7 @@ async function proxyToAppView(
 	auth: AuthContext,
 ): Promise<Response> {
 	const url = new URL(req.url);
-	const targetUrl = `${APPVIEW_URL}${url.pathname}${url.search}`;
+	const targetUrl = new URL(url.pathname + url.search, APPVIEW_URL).href;
 	const headers = new Headers(req.headers);
 	headers.delete("host");
 

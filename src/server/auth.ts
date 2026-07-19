@@ -1,3 +1,4 @@
+import { isDid } from "@atcute/lexicons/syntax";
 import { AuthRequiredError, InvalidRequestError } from "@atcute/xrpc-server";
 import * as jose from "jose";
 
@@ -87,13 +88,13 @@ export async function verifyAccessToken(
 			message: "Malformed token",
 		});
 	}
-	if (typeof payload.sub !== "string" || !payload.sub.startsWith("did:")) {
+	if (typeof payload.sub !== "string" || !isDid(payload.sub)) {
 		throw new InvalidRequestError({
 			error: "InvalidToken",
 			message: "Malformed token",
 		});
 	}
-	if (typeof payload.aud !== "string" || !payload.aud.startsWith("did:")) {
+	if (typeof payload.aud !== "string" || !isDid(payload.aud)) {
 		throw new InvalidRequestError({
 			error: "InvalidToken",
 			message: "Malformed token",
@@ -109,7 +110,6 @@ export async function verifyAccessToken(
 	return { sub: payload.sub };
 }
 
-// https://github.com/bluesky-social/atproto/blob/main/packages/pds/src/auth-verifier.ts
 export async function verifyRefreshToken(
 	request: Request,
 	{ jwtKey, serviceDid }: AuthContext,
@@ -151,7 +151,7 @@ export async function verifyRefreshToken(
 			message: "Malformed token",
 		});
 	}
-	if (typeof payload.sub !== "string" || !payload.sub.startsWith("did:")) {
+	if (typeof payload.sub !== "string" || !isDid(payload.sub)) {
 		throw new InvalidRequestError({
 			error: "InvalidToken",
 			message: "Malformed token",
