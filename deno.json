@@ -24,6 +24,7 @@
 		"@std/encoding": "jsr:@std/encoding@^1.0.11",
 		"@std/path": "jsr:@std/path@^1.1.6",
 		"jose": "npm:jose@^6.2.3",
-		"octokit": "npm:octokit@^5.0.5"
+		"octokit": "npm:octokit@^5.0.5",
+		"zod": "npm:zod@^4.4.3"
 	}
 }

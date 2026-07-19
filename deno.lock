@@ -20,7 +20,8 @@
     "npm:@atproto/xrpc-server@~0.11.10": "0.11.10",
     "npm:@biomejs/biome@*": "2.5.4",
     "npm:jose@^6.2.3": "6.2.3",
-    "npm:octokit@^5.0.5": "5.0.5"
+    "npm:octokit@^5.0.5": "5.0.5",
+    "npm:zod@^4.4.3": "4.4.3"
   },
   "jsr": {
     "@noble/hashes@2.2.0": {
@@ -160,7 +161,7 @@
         "await-lock",
         "multiformats",
         "tlds",
-        "zod"
+        "zod@3.25.76"
       ]
     },
     "@atproto/common-web@0.5.6": {
@@ -169,7 +170,7 @@
         "@atproto/lex-data",
         "@atproto/lex-json",
         "@atproto/syntax",
-        "zod"
+        "zod@3.25.76"
       ]
     },
     "@atproto/common@0.7.2": {
@@ -237,7 +238,7 @@
         "@atproto/common-web",
         "@atproto/syntax",
         "multiformats",
-        "zod"
+        "zod@3.25.76"
       ]
     },
     "@atproto/repo@0.10.6": {
@@ -250,7 +251,7 @@
         "@atproto/lex-data",
         "@atproto/syntax",
         "varint",
-        "zod"
+        "zod@3.25.76"
       ]
     },
     "@atproto/syntax@0.7.2": {
@@ -291,7 +292,7 @@
       "integrity": "sha512-yVfKrlwZBBm44Ft9jDvHcTCwQ1ElqSlzXHWhT/KcqE+u24EAhWVFosfABfGbUByB/PmN8eLJ06FsWo5pUQcMNQ==",
       "dependencies": [
         "@atproto/lexicon",
-        "zod"
+        "zod@3.25.76"
       ]
     },
     "@biomejs/biome@2.5.4": {
@@ -1102,6 +1103,9 @@
     },
     "zod@3.25.76": {
       "integrity": "sha512-gzUt/qt81nXsFGKIFcC3YnfEAx5NkunCfnDlvuBSSFS02bcXu4Lmea0AFIUwbLWxWPx3d9p8S5QoaujKcNQxcQ=="
+    },
+    "zod@4.4.3": {
+      "integrity": "sha512-ytENFjIJFl2UwYglde2jchW2Hwm4GJFLDiSXWdTrJQBIN9Fcyp7n4DhxJEiWNAJMV1/BqWfW/kkg71UDcHJyTQ=="
     }
   },
   "workspace": {
@@ -1122,7 +1126,8 @@
       "npm:@atproto/repo@~0.10.6",
       "npm:@atproto/xrpc-server@~0.11.10",
       "npm:jose@^6.2.3",
-      "npm:octokit@^5.0.5"
+      "npm:octokit@^5.0.5",
+      "npm:zod@^4.4.3"
     ]
   }
 }

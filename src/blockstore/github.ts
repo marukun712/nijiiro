@@ -3,6 +3,9 @@ import type { CommitData } from "@atproto/repo";
 import { BlockMap, ReadableBlockstore } from "@atproto/repo";
 import { encodeBase64 } from "@std/encoding";
 import { Octokit } from "octokit";
+import { z } from "zod";
+
+const httpErrorSchema = z.object({ status: z.number() });
 
 function toBase64(bytes: Uint8Array): string {
 	const copy = new Uint8Array(bytes.byteLength);
@@ -48,12 +51,8 @@ export class GitHubRepoStorage extends ReadableBlockstore {
 				};
 			} else return null;
 		} catch (err) {
-			if (
-				err &&
-				typeof err === "object" &&
-				"status" in err &&
-				err.status !== 404
-			) {
+			const parsed = httpErrorSchema.safeParse(err);
+			if (parsed.success && parsed.data.status !== 404) {
 				console.log("[github] getFile error:", path, err);
 			}
 			return null;

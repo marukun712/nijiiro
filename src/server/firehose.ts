@@ -5,6 +5,7 @@ import { InternalServerError } from "@atcute/xrpc-server";
 import type { Cid } from "@atproto/lex-data";
 import type { CommitData, RecordWriteOp } from "@atproto/repo";
 import { blocksToCarFile } from "@atproto/repo";
+import { z } from "zod";
 import type { GitHubRepoStorage } from "../blockstore/github.ts";
 
 type FirehoseMessage = ComAtprotoSyncSubscribeRepos.$message;
@@ -44,7 +45,9 @@ export class Firehose {
 						let count = 0;
 						for await (const entry of iter) {
 							c.enqueue(entry.value);
-							fromSeq = (entry.key[2] as number) + 1;
+							const seqResult = z.number().safeParse(entry.key[2]);
+							if (!seqResult.success) break;
+							fromSeq = seqResult.data + 1;
 							count++;
 						}
 						if (count < PAGE_SIZE) break;

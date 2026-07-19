@@ -1,9 +1,28 @@
 import { isDid } from "@atcute/lexicons/syntax";
 import { AuthRequiredError, InvalidRequestError } from "@atcute/xrpc-server";
 import * as jose from "jose";
+import { z } from "zod";
 
 const ACCESS_SCOPE = "com.atproto.access";
 const REFRESH_SCOPE = "com.atproto.refresh";
+
+const didSchema = z.string().refine(isDid);
+
+const accessTokenShapeSchema = z.object({
+	sub: didSchema,
+	aud: didSchema,
+	lxm: z.undefined(),
+	cnf: z.undefined(),
+});
+const accessScopeSchema = z.object({ scope: z.literal(ACCESS_SCOPE) });
+
+const refreshTokenShapeSchema = z.object({
+	sub: didSchema,
+	lxm: z.undefined(),
+	cnf: z.undefined(),
+});
+const jtiSchema = z.object({ jti: z.string() });
+const refreshScopeSchema = z.object({ scope: z.literal(REFRESH_SCOPE) });
 
 export type AuthContext = {
 	jwtKey: Uint8Array;
@@ -76,38 +95,22 @@ export async function verifyAccessToken(
 			});
 		});
 
-	if (payload.lxm !== undefined) {
+	const shapeResult = accessTokenShapeSchema.safeParse(payload);
+	if (!shapeResult.success) {
 		throw new InvalidRequestError({
 			error: "InvalidToken",
 			message: "Malformed token",
 		});
 	}
-	if (payload.cnf !== undefined) {
-		throw new InvalidRequestError({
-			error: "InvalidToken",
-			message: "Malformed token",
-		});
-	}
-	if (typeof payload.sub !== "string" || !isDid(payload.sub)) {
-		throw new InvalidRequestError({
-			error: "InvalidToken",
-			message: "Malformed token",
-		});
-	}
-	if (typeof payload.aud !== "string" || !isDid(payload.aud)) {
-		throw new InvalidRequestError({
-			error: "InvalidToken",
-			message: "Malformed token",
-		});
-	}
-	if (payload.scope !== ACCESS_SCOPE) {
+	const scopeResult = accessScopeSchema.safeParse(payload);
+	if (!scopeResult.success) {
 		throw new InvalidRequestError({
 			error: "InvalidToken",
 			message: "Bad token scope",
 		});
 	}
 
-	return { sub: payload.sub };
+	return { sub: shapeResult.data.sub };
 }
 
 export async function verifyRefreshToken(
@@ -139,38 +142,29 @@ export async function verifyRefreshToken(
 			});
 		});
 
-	if (payload.lxm !== undefined) {
+	const shapeResult = refreshTokenShapeSchema.safeParse(payload);
+	if (!shapeResult.success) {
 		throw new InvalidRequestError({
 			error: "InvalidToken",
 			message: "Malformed token",
 		});
 	}
-	if (payload.cnf !== undefined) {
-		throw new InvalidRequestError({
-			error: "InvalidToken",
-			message: "Malformed token",
-		});
-	}
-	if (typeof payload.sub !== "string" || !isDid(payload.sub)) {
-		throw new InvalidRequestError({
-			error: "InvalidToken",
-			message: "Malformed token",
-		});
-	}
-	if (typeof payload.jti !== "string") {
+	const jtiResult = jtiSchema.safeParse(payload);
+	if (!jtiResult.success) {
 		throw new InvalidRequestError({
 			error: "InvalidToken",
 			message: "Missing token id",
 		});
 	}
-	if (payload.scope !== REFRESH_SCOPE) {
+	const scopeResult = refreshScopeSchema.safeParse(payload);
+	if (!scopeResult.success) {
 		throw new InvalidRequestError({
 			error: "InvalidToken",
 			message: "Bad token scope",
 		});
 	}
 
-	return { sub: payload.sub, jti: payload.jti };
+	return { sub: shapeResult.data.sub, jti: jtiResult.data.jti };
 }
 
 export function bearerTokenFromRequest(request: Request): string | null {
