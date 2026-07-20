@@ -87,6 +87,7 @@ async function commitWrites(
 	firehose: Firehose,
 	ops: RecordWriteOp[],
 ) {
+	const prevData = ctx.repo.commit.data;
 	const commitData: CommitData = await ctx.repo.formatCommit(ops, ctx.keypair);
 	ctx.repo = await ctx.repo.applyCommit(commitData);
 
@@ -98,7 +99,7 @@ async function commitWrites(
 		),
 	);
 
-	await firehose.publishCommit(ctx.repo.did, ops, opCids, commitData);
+	await firehose.publishCommit(ctx.repo.did, ops, opCids, commitData, prevData);
 
 	return { commitData, opCids };
 }

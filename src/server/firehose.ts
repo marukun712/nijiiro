@@ -81,6 +81,7 @@ export class Firehose {
 		ops: RecordWriteOp[],
 		opCids: (Cid | null)[],
 		commitData: CommitData,
+		prevData?: Cid,
 	) {
 		if (!isDid(did)) {
 			throw new InternalServerError({ message: `repo did is invalid: ${did}` });
@@ -118,6 +119,7 @@ export class Firehose {
 			commit: { $link: commitData.cid.toString() },
 			rev: commitData.rev,
 			since: commitData.since,
+			prevData: prevData ? { $link: prevData.toString() } : undefined,
 			blocks: { $bytes },
 			ops: repoOps,
 			blobs: [],
