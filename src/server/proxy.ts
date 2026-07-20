@@ -77,6 +77,16 @@ export function createProxyMiddleware(
 			});
 		}
 
+		if (url.pathname === "/.well-known/atproto-did") {
+			console.log("[proxy] serving atproto-did");
+			return new Response(did, {
+				headers: {
+					"content-type": "text/plain",
+					"access-control-allow-origin": "*",
+				},
+			});
+		}
+
 		const nsid = nsidFromPath(url.pathname);
 
 		if (nsid?.startsWith("app.bsky.")) {
