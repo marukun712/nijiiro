@@ -2,7 +2,7 @@ import { writeCarStream } from "@atcute/car";
 import { decode } from "@atcute/cbor";
 import type { CidLink } from "@atcute/cid";
 import * as CID from "@atcute/cid";
-import { isNsid } from "@atcute/lexicons/syntax";
+import { isNsid, isRecordKey } from "@atcute/lexicons/syntax";
 import {
 	MemoryBlockStore,
 	NodeStore,
@@ -74,6 +74,12 @@ export class RepoService {
 		}
 	}
 
+	private requireRkey(rkey: string): void {
+		if (!isRecordKey(rkey)) {
+			throw new InternalServerError({ message: `invalid rkey: ${rkey}` });
+		}
+	}
+
 	private requireCidLink(link: CidLink | null, key: string): CidLink {
 		if (!link) {
 			throw new InternalServerError({
@@ -133,6 +139,7 @@ export class RepoService {
 		record: unknown,
 	): Promise<WriteResult> {
 		this.requireNsid(collection);
+		this.requireRkey(rkey);
 		const parsed = recordSchema.safeParse(record);
 		if (!parsed.success) {
 			throw new InternalServerError({ message: "record must be an object" });
@@ -157,6 +164,7 @@ export class RepoService {
 		record: unknown,
 	): Promise<WriteResult> {
 		this.requireNsid(collection);
+		this.requireRkey(rkey);
 		const parsed = recordSchema.safeParse(record);
 		if (!parsed.success) {
 			throw new InternalServerError({ message: "record must be an object" });
@@ -180,6 +188,7 @@ export class RepoService {
 		rkey: string,
 	): Promise<{ commit: { cid: string; rev: string } }> {
 		this.requireNsid(collection);
+		this.requireRkey(rkey);
 		await removeRecord(collection, rkey);
 		await this.rebuild();
 		return { commit: { cid: this.commitCid, rev: this.commitRev } };
@@ -188,6 +197,7 @@ export class RepoService {
 	async applyWrites(ops: WriteOp[]): Promise<ApplyWritesResult> {
 		for (const op of ops) {
 			this.requireNsid(op.collection);
+			this.requireRkey(op.rkey);
 		}
 		for (const op of ops) {
 			if (op.action === "delete") {
@@ -381,14 +391,7 @@ export class RepoService {
 async function collectStream(
 	stream: AsyncIterable<Uint8Array>,
 ): Promise<Uint8Array> {
-	const chunks: Uint8Array[] = [];
-	for await (const chunk of stream) chunks.push(chunk);
-	const total = chunks.reduce((sum, c) => sum + c.length, 0);
-	const result = new Uint8Array(total);
-	let offset = 0;
-	for (const chunk of chunks) {
-		result.set(chunk, offset);
-		offset += chunk.length;
-	}
-	return result;
+	return new Uint8Array(
+		await new Response(ReadableStream.from(stream)).arrayBuffer(),
+	);
 }

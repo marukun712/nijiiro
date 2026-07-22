@@ -8,21 +8,21 @@ const REFRESH_SCOPE = "com.atproto.refresh";
 
 const didSchema = z.string().refine(isDid);
 
-const accessTokenShapeSchema = z.object({
+const accessPayloadSchema = z.object({
 	sub: didSchema,
 	aud: didSchema,
+	scope: z.literal(ACCESS_SCOPE),
 	lxm: z.undefined().optional(),
 	cnf: z.undefined().optional(),
 });
-const accessScopeSchema = z.object({ scope: z.literal(ACCESS_SCOPE) });
 
-const refreshTokenShapeSchema = z.object({
+const refreshPayloadSchema = z.object({
 	sub: didSchema,
+	jti: z.string(),
+	scope: z.literal(REFRESH_SCOPE),
 	lxm: z.undefined().optional(),
 	cnf: z.undefined().optional(),
 });
-const jtiSchema = z.object({ jti: z.string() });
-const refreshScopeSchema = z.object({ scope: z.literal(REFRESH_SCOPE) });
 
 export type AuthContext = {
 	jwtKey: Uint8Array;
@@ -95,22 +95,15 @@ export async function verifyAccessToken(
 			});
 		});
 
-	const shapeResult = accessTokenShapeSchema.safeParse(payload);
-	if (!shapeResult.success) {
+	const result = accessPayloadSchema.safeParse(payload);
+	if (!result.success) {
 		throw new InvalidRequestError({
 			error: "InvalidToken",
 			message: "Malformed token",
 		});
 	}
-	const scopeResult = accessScopeSchema.safeParse(payload);
-	if (!scopeResult.success) {
-		throw new InvalidRequestError({
-			error: "InvalidToken",
-			message: "Bad token scope",
-		});
-	}
 
-	return { sub: shapeResult.data.sub };
+	return { sub: result.data.sub };
 }
 
 export async function verifyRefreshToken(
@@ -142,29 +135,15 @@ export async function verifyRefreshToken(
 			});
 		});
 
-	const shapeResult = refreshTokenShapeSchema.safeParse(payload);
-	if (!shapeResult.success) {
+	const result = refreshPayloadSchema.safeParse(payload);
+	if (!result.success) {
 		throw new InvalidRequestError({
 			error: "InvalidToken",
 			message: "Malformed token",
 		});
 	}
-	const jtiResult = jtiSchema.safeParse(payload);
-	if (!jtiResult.success) {
-		throw new InvalidRequestError({
-			error: "InvalidToken",
-			message: "Missing token id",
-		});
-	}
-	const scopeResult = refreshScopeSchema.safeParse(payload);
-	if (!scopeResult.success) {
-		throw new InvalidRequestError({
-			error: "InvalidToken",
-			message: "Bad token scope",
-		});
-	}
 
-	return { sub: shapeResult.data.sub, jti: jtiResult.data.jti };
+	return { sub: result.data.sub, jti: result.data.jti };
 }
 
 export function bearerTokenFromRequest(request: Request): string | null {
