@@ -6,11 +6,12 @@ import { cors } from "@atcute/xrpc-server/middlewares/cors";
 import { decodeHex } from "@std/encoding/hex";
 import { LocalBlockStore } from "../blockstore/local.ts";
 import { createJwtKey } from "./services/auth.ts";
+import { FirehoseService } from "./services/firehose.ts";
 import { createProxyMiddleware } from "./services/proxy.ts";
 import { type RepoContext, RepoService } from "./services/repo.ts";
 import { registerRepoHandlers } from "./xrpc/repo.ts";
 import { registerServerHandlers } from "./xrpc/server.ts";
-import { registerSyncHandlers } from "./xrpc/sync.ts";
+import { handleSubscribeRepos, registerSyncHandlers } from "./xrpc/sync.ts";
 
 function getEnv(name: string, fallback?: string): string {
 	const value = Deno.env.get(name) ?? fallback;
@@ -51,6 +52,9 @@ console.log("[main] repo ready:", decoded.did);
 const ctx: RepoContext = { storage, commit: decoded, rootCid };
 const service = new RepoService(ctx);
 
+const firehose = new FirehoseService();
+service.onCommit = (data) => firehose.emit(data);
+
 const auth = { jwtKey: createJwtKey(JWT_SECRET), serviceDid: REPO_DID };
 
 const router = new XRPCRouter({ middlewares: [cors()] });
@@ -64,5 +68,15 @@ const handler = createProxyMiddleware(
 	keypair,
 	auth,
 );
+
 console.log("[main] starting server on port:", PORT);
-Deno.serve({ port: PORT }, handler);
+Deno.serve({ port: PORT }, (req) => {
+	const url = new URL(req.url);
+	if (
+		url.pathname === "/xrpc/com.atproto.sync.subscribeRepos" &&
+		req.headers.get("upgrade") === "websocket"
+	) {
+		return handleSubscribeRepos(req, firehose, service);
+	}
+	return handler(req);
+});

@@ -10,6 +10,11 @@ import {
 } from "@atcute/atproto";
 import type { XRPCRouter } from "@atcute/xrpc-server";
 import { XRPCError } from "@atcute/xrpc-server";
+import {
+	encodeErrorFrame,
+	encodeSyncFrame,
+	type FirehoseService,
+} from "../services/firehose.ts";
 import type { RepoService } from "../services/repo.ts";
 import { withErrorLog } from "../util.ts";
 
@@ -21,6 +26,49 @@ function requireSameDid(did: string, service: RepoService) {
 			message: "repo not found",
 		});
 	}
+}
+
+export async function handleSubscribeRepos(
+	req: Request,
+	firehose: FirehoseService,
+	service: RepoService,
+): Promise<Response> {
+	const url = new URL(req.url);
+	const cursorParam = url.searchParams.get("cursor");
+	const cursor = cursorParam !== null ? Number(cursorParam) : undefined;
+
+	const { socket, response } = Deno.upgradeWebSocket(req);
+
+	socket.addEventListener("open", async () => {
+		if (cursor !== undefined) {
+			if (cursor > firehose.lastSeq) {
+				socket.send(
+					encodeErrorFrame("FutureCursor", "cursor is in the future"),
+				);
+				socket.close();
+				return;
+			}
+			const { frames, expired } = firehose.getBackfill(cursor);
+			if (expired) {
+				const syncCarBytes = await service.getSyncCarBytes();
+				socket.send(
+					encodeSyncFrame(
+						service.did,
+						service.commitRev,
+						firehose.nextSeq(),
+						syncCarBytes,
+					),
+				);
+			} else {
+				for (const frame of frames) {
+					socket.send(frame);
+				}
+			}
+		}
+		firehose.addSubscriber(socket);
+	});
+
+	return response;
 }
 
 export function registerSyncHandlers(router: XRPCRouter, service: RepoService) {

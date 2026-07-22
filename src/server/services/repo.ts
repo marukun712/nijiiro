@@ -18,6 +18,7 @@ const recordSchema = z.record(z.string(), z.unknown());
 
 import type { LocalBlockStore } from "../../blockstore/local.ts";
 import { removeRecord, writeRecord } from "../../store/json.ts";
+import type { CommitData, CommitOp } from "./firehose.ts";
 
 export type RepoContext = {
 	storage: LocalBlockStore;
@@ -52,6 +53,8 @@ export type RecordEntry = {
 };
 
 export class RepoService {
+	onCommit?: (data: CommitData) => void;
+
 	constructor(private ctx: RepoContext) {}
 
 	get did(): string {
@@ -97,6 +100,42 @@ export class RepoService {
 		return new NodeStore(
 			new OverlayBlockStore(new MemoryBlockStore(), this.ctx.storage),
 		);
+	}
+
+	private async snapshotCids(): Promise<Set<string>> {
+		const cids = new Set<string>();
+		for await (const { cidStr } of this.ctx.storage.iterAllBlocks()) {
+			cids.add(cidStr);
+		}
+		return cids;
+	}
+
+	private async computeDiffCar(oldCids: Set<string>): Promise<Uint8Array> {
+		const rootCid = this.ctx.rootCid;
+		const storage = this.ctx.storage;
+		async function* diffBlocks() {
+			for await (const { cidStr, bytes } of storage.iterAllBlocks()) {
+				if (!oldCids.has(cidStr)) {
+					yield { cid: CID.fromString(cidStr).bytes, data: bytes };
+				}
+			}
+		}
+		return collectStream(writeCarStream([{ $link: rootCid }], diffBlocks()));
+	}
+
+	async getSyncCarBytes(): Promise<Uint8Array> {
+		const rootCid = this.ctx.rootCid;
+		const commitBytes = await this.ctx.storage.get(rootCid);
+		if (!commitBytes) {
+			throw new InternalServerError({ message: "commit block missing" });
+		}
+		async function* blocks() {
+			yield {
+				cid: CID.fromString(rootCid).bytes,
+				data: commitBytes as Uint8Array,
+			};
+		}
+		return collectStream(writeCarStream([{ $link: rootCid }], blocks()));
 	}
 
 	private async rebuild(): Promise<void> {
@@ -145,15 +184,29 @@ export class RepoService {
 			throw new InternalServerError({ message: "record must be an object" });
 		}
 		await writeRecord(collection, rkey, parsed.data);
+		const since = this.commitRev;
+		const prevData = this.ctx.commit.data.$link;
+		const oldCids = await this.snapshotCids();
 		await this.rebuild();
 		const walker = await NodeWalker.create(
 			this.nodeStore(),
 			this.ctx.commit.data.$link,
 		);
 		const cidLink = await walker.findRpath(`${collection}/${rkey}`);
+		const newCid = this.requireCidLink(cidLink, `${collection}/${rkey}`).$link;
+		const diffCar = await this.computeDiffCar(oldCids);
+		this.onCommit?.({
+			did: this.ctx.commit.did,
+			rev: this.ctx.commit.rev,
+			since,
+			commitCid: this.ctx.rootCid,
+			diffCar,
+			ops: [{ action: "create", path: `${collection}/${rkey}`, cid: newCid }],
+			prevData,
+		});
 		return {
 			uri: this.toUri(collection, rkey),
-			cid: this.requireCidLink(cidLink, `${collection}/${rkey}`).$link,
+			cid: newCid,
 			commit: { cid: this.commitCid, rev: this.commitRev },
 		};
 	}
@@ -169,16 +222,35 @@ export class RepoService {
 		if (!parsed.success) {
 			throw new InternalServerError({ message: "record must be an object" });
 		}
+		const existing = await this.getRecord(collection, rkey);
+		const action = existing ? "update" : "create";
+		const prev = existing?.cid;
 		await writeRecord(collection, rkey, parsed.data);
+		const since = this.commitRev;
+		const prevData = this.ctx.commit.data.$link;
+		const oldCids = await this.snapshotCids();
 		await this.rebuild();
 		const walker = await NodeWalker.create(
 			this.nodeStore(),
 			this.ctx.commit.data.$link,
 		);
 		const cidLink = await walker.findRpath(`${collection}/${rkey}`);
+		const newCid = this.requireCidLink(cidLink, `${collection}/${rkey}`).$link;
+		const diffCar = await this.computeDiffCar(oldCids);
+		const op: CommitOp = { action, path: `${collection}/${rkey}`, cid: newCid };
+		if (prev !== undefined) op.prev = prev;
+		this.onCommit?.({
+			did: this.ctx.commit.did,
+			rev: this.ctx.commit.rev,
+			since,
+			commitCid: this.ctx.rootCid,
+			diffCar,
+			ops: [op],
+			prevData,
+		});
 		return {
 			uri: this.toUri(collection, rkey),
-			cid: this.requireCidLink(cidLink, `${collection}/${rkey}`).$link,
+			cid: newCid,
 			commit: { cid: this.commitCid, rev: this.commitRev },
 		};
 	}
@@ -189,8 +261,28 @@ export class RepoService {
 	): Promise<{ commit: { cid: string; rev: string } }> {
 		this.requireNsid(collection);
 		this.requireRkey(rkey);
+		const existing = await this.getRecord(collection, rkey);
 		await removeRecord(collection, rkey);
+		const since = this.commitRev;
+		const prevData = this.ctx.commit.data.$link;
+		const oldCids = await this.snapshotCids();
 		await this.rebuild();
+		const diffCar = await this.computeDiffCar(oldCids);
+		const op: CommitOp = {
+			action: "delete",
+			path: `${collection}/${rkey}`,
+			cid: null,
+		};
+		if (existing) op.prev = existing.cid;
+		this.onCommit?.({
+			did: this.ctx.commit.did,
+			rev: this.ctx.commit.rev,
+			since,
+			commitCid: this.ctx.rootCid,
+			diffCar,
+			ops: [op],
+			prevData,
+		});
 		return { commit: { cid: this.commitCid, rev: this.commitRev } };
 	}
 
@@ -198,6 +290,13 @@ export class RepoService {
 		for (const op of ops) {
 			this.requireNsid(op.collection);
 			this.requireRkey(op.rkey);
+		}
+		const prevCids = new Map<string, string>();
+		for (const op of ops) {
+			if (op.action !== "create") {
+				const existing = await this.getRecord(op.collection, op.rkey);
+				if (existing) prevCids.set(`${op.collection}/${op.rkey}`, existing.cid);
+			}
 		}
 		for (const op of ops) {
 			if (op.action === "delete") {
@@ -212,6 +311,9 @@ export class RepoService {
 				await writeRecord(op.collection, op.rkey, parsed.data);
 			}
 		}
+		const since = this.commitRev;
+		const prevData = this.ctx.commit.data.$link;
+		const oldCids = await this.snapshotCids();
 		await this.rebuild();
 		const walker = await NodeWalker.create(
 			this.nodeStore(),
@@ -229,6 +331,31 @@ export class RepoService {
 				};
 			}),
 		);
+		const diffCar = await this.computeDiffCar(oldCids);
+		const commitOps: CommitOp[] = ops.map((op, i) => {
+			const path = `${op.collection}/${op.rkey}`;
+			const prev = prevCids.get(path);
+			if (op.action === "delete") {
+				return { action: "delete", path, cid: null, ...(prev ? { prev } : {}) };
+			}
+			const item = items[i];
+			const newCid = item.type !== "delete" ? item.cid : null;
+			return {
+				action: op.action,
+				path,
+				cid: newCid,
+				...(prev ? { prev } : {}),
+			};
+		});
+		this.onCommit?.({
+			did: this.ctx.commit.did,
+			rev: this.ctx.commit.rev,
+			since,
+			commitCid: this.ctx.rootCid,
+			diffCar,
+			ops: commitOps,
+			prevData,
+		});
 		return { commit: { cid: this.commitCid, rev: this.commitRev }, items };
 	}
 
