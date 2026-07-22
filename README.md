@@ -1,14 +1,14 @@
 # nijiiro
 
-nijiiroは、GitHubをストレージとして使用するATProtocol PDSです。
+nijiiroは、シンプルなATProtocol PDSです。
 
 > [!WARNING]
 > このリポジトリは、個人の実験プロジェクトです。セキュリティ的な監査は受けていませんので、自己責任での利用をお願いします。
 
 ## 前提条件
 
-- GitHub アカウントと、ブロックストレージ用の**空のリポジトリ**
 - HTTPS に対応した管理下のドメイン (例: `example.com`)
+- Deno がインストールされていること
 
 ## セットアップ
 
@@ -29,55 +29,56 @@ REPO_SIGNING_KEY_DID=did:key:z...
 
 `REPO_SIGNING_KEY_DID` は次のステップで使用するため、メモしておいてください。
 
-### 2. DID ドキュメントの作成
+対話型で簡易的にBlueskyプロフィールを設定することができます。
 
-このリポジトリの `well-known/did.json` を編集します。サーバーは `/.well-known/did.json` へのリクエストをこのファイルから返します。
+### 2. config.ts の編集
 
-以下のプレースホルダーを置き換えてください:
-
-- `<your-domain>` — 使用するドメイン (例: `example.com`)
-- `<your-handle>` — AT Protocol のハンドル (例: `example.com`)
-- `<REPO_SIGNING_KEY_DID>` — ステップ 1 で出力された `did:key:z...` の `z...` 部分のみ (`did:key:` プレフィックスは含めない)
-- `<your-pds-url>` — このサーバーの公開 URL (例: `https://pds.example.com`)
-
-```json
-{
-  "@context": [
-    "https://www.w3.org/ns/did/v1",
-    "https://w3id.org/security/multikey/v1",
-    "https://w3id.org/security/suites/secp256k1-2019/v1"
-  ],
-  "id": "did:web:<your-domain>",
-  "alsoKnownAs": ["at://<your-handle>"],
-  "verificationMethod": [
-    {
-      "id": "did:web:<your-domain>#atproto",
-      "type": "Multikey",
-      "controller": "did:web:<your-domain>",
-      "publicKeyMultibase": "<REPO_SIGNING_KEY_DID>"
-    }
-  ],
-  "service": [
-    {
-      "id": "#atproto_pds",
-      "type": "AtprotoPersonalDataServer",
-      "serviceEndpoint": "<your-pds-url>"
-    }
-  ]
-}
-```
-
-サーバー起動後に配信されているか確認できます:
+`config.example.ts` を `config.ts` にコピーして編集します:
 
 ```sh
-curl https://<your-domain>/.well-known/did.json
+cp config.example.ts config.ts
 ```
 
-### 3. GitHub personal access token の作成
+`config.ts` 内の DID ドキュメントを編集してください。以下のプレースホルダーを置き換えます:
 
-GitHub > Settings > Developer settings > Personal access tokens から、ストレージ用リポジトリに対して **Contents** の読み書き権限を持つトークンを作成します。
+- `did:web:localhost` → `did:web:<your-domain>` (例: `did:web:example.com`)
+- `at://localhost.local` → `at://<your-handle>` (例: `at://example.com`)
+- `publicKeyMultibase` → ステップ 1 で出力された `REPO_SIGNING_KEY_DID` の値 (`did:key:` プレフィックスを含む全体)
+- `serviceEndpoint` → このサーバーの公開 URL (例: `https://pds.example.com`)
+- `defaultPath` → レコードを保存するディレクトリのパス
 
-### 4. 環境変数の設定
+```ts
+const config: Config = {
+  defaultPath: "./records",
+  collections: {},
+  didDoc: {
+    "@context": [
+      "https://www.w3.org/ns/did/v1",
+      "https://w3id.org/security/multikey/v1",
+      "https://w3id.org/security/suites/secp256k1-2019/v1",
+    ],
+    id: "did:web:<your-domain>",
+    alsoKnownAs: ["at://<your-handle>"],
+    verificationMethod: [
+      {
+        id: "did:web:<your-domain>#atproto",
+        type: "Multikey",
+        controller: "did:web:<your-domain>",
+        publicKeyMultibase: "<REPO_SIGNING_KEY_DID>",
+      },
+    ],
+    service: [
+      {
+        id: "#atproto_pds",
+        type: "AtprotoPersonalDataServer",
+        serviceEndpoint: "<your-pds-url>",
+      },
+    ],
+  },
+};
+```
+
+### 3. 環境変数の設定
 
 `.env.example` を `.env` にコピーして、各値を埋めます:
 
@@ -86,26 +87,34 @@ cp .env.example .env
 ```
 
 ```env
-GITHUB_TOKEN=<GitHub トークン>
-GITHUB_OWNER=<GitHub ユーザー名>
-GITHUB_REPO=<ストレージ用リポジトリ名>
-
 REPO_DID=did:web:<your-domain>
 REPO_HANDLE=<your-handle>
 REPO_SIGNING_KEY=<ステップ 1 の値>
 
 JWT_SECRET=<ステップ 1 の値>
 ADMIN_PASSWORD=<ステップ 1 の値>
-
-PORT=<ポート>
 ```
 
-`GITHUB_BRANCH`, `PORT` は省略可能で、デフォルトは `main`, `8080` です。
+`PORT` は省略可能で、デフォルトは `8080` です。
+
+### 4. リポジトリのビルド
+
+レコードからMSTをビルドします:
+
+```sh
+deno task build
+```
 
 ### 5. サーバーの起動
 
 ```sh
 deno task start
+```
+
+サーバー起動後、DID ドキュメントが配信されているか確認できます:
+
+```sh
+curl https://<your-domain>/.well-known/did.json
 ```
 
 ## リレーへの登録
@@ -124,6 +133,5 @@ curl -X POST https://bsky.network/xrpc/com.atproto.sync.requestCrawl \
 
 ## 実装予定
 
-- Bluesky AppView以外の対応
+- Bluesky AppView 以外の対応
 - OAuth
-- GitHub以外のGit Remoteへの拡張
