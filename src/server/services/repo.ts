@@ -110,7 +110,7 @@ export class RepoService {
 		return cids;
 	}
 
-	private async computeDiffCar(oldCids: Set<string>): Promise<Uint8Array> {
+	private computeDiffCar(oldCids: Set<string>): Promise<Uint8Array> {
 		const rootCid = this.ctx.rootCid;
 		const storage = this.ctx.storage;
 		async function* diffBlocks() {

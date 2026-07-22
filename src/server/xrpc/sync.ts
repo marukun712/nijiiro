@@ -28,11 +28,11 @@ function requireSameDid(did: string, service: RepoService) {
 	}
 }
 
-export async function handleSubscribeRepos(
+export function handleSubscribeRepos(
 	req: Request,
 	firehose: FirehoseService,
 	service: RepoService,
-): Promise<Response> {
+): Response {
 	const url = new URL(req.url);
 	const cursorParam = url.searchParams.get("cursor");
 	const cursor = cursorParam !== null ? Number(cursorParam) : undefined;
