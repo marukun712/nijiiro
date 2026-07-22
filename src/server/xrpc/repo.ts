@@ -16,6 +16,7 @@ import {
 	json,
 	type XRPCRouter,
 } from "@atcute/xrpc-server";
+import config from "../../../config.ts";
 import type { AuthContext } from "../services/auth.ts";
 import { verifyAccessToken } from "../services/auth.ts";
 import type { RepoService, WriteOp } from "../services/repo.ts";
@@ -191,7 +192,7 @@ export function registerRepoHandlers(
 				return json({
 					handle,
 					did: service.did,
-					didDoc: {},
+					didDoc: config.didDoc,
 					collections,
 					handleIsCorrect: true,
 				});

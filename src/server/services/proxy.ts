@@ -3,6 +3,7 @@ import type { Did, Nsid } from "@atcute/lexicons/syntax";
 import { isDid, isNsid } from "@atcute/lexicons/syntax";
 import { createServiceJwt } from "@atcute/xrpc-server/auth";
 import { normalize } from "@std/path/posix";
+import config from "../../../config.ts";
 import type { AuthContext } from "./auth.ts";
 import { bearerTokenFromRequest, verifyAccessToken } from "./auth.ts";
 
@@ -50,8 +51,6 @@ async function proxyToAppView(
 	});
 }
 
-const DID_JSON_PATH = new URL("../../well-known/did.json", import.meta.url);
-
 export function createProxyMiddleware(
 	next: (req: Request) => Promise<Response> | Response,
 	did: string,
@@ -69,8 +68,7 @@ export function createProxyMiddleware(
 
 		if (url.pathname === "/.well-known/did.json") {
 			console.log("[proxy] serving did.json");
-			const content = await Deno.readTextFile(DID_JSON_PATH);
-			return new Response(content, {
+			return new Response(JSON.stringify(config.didDoc, null, 2), {
 				headers: {
 					"content-type": "application/json",
 					"access-control-allow-origin": "*",
