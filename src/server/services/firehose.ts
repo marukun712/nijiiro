@@ -1,4 +1,4 @@
-import { encode } from "@atcute/cbor";
+import { encode, toBytes } from "@atcute/cbor";
 
 const BUFFER_SIZE = 100;
 
@@ -40,7 +40,7 @@ export function encodeSyncFrame(
 ): Uint8Array {
 	return encodeFrame(
 		{ op: 1, t: "#sync" },
-		{ seq, did, time: new Date().toISOString(), rev, blocks },
+		{ seq, did, time: new Date().toISOString(), rev, blocks: toBytes(blocks) },
 	);
 }
 
@@ -67,7 +67,7 @@ export class FirehoseService {
 				rev: data.rev,
 				since: data.since,
 				commit: { $link: data.commitCid },
-				blocks: data.diffCar,
+				blocks: toBytes(data.diffCar),
 				ops: data.ops.map((op) => ({
 					action: op.action,
 					path: op.path,
