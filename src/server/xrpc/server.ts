@@ -7,11 +7,15 @@ import {
 import { isDid, isHandle } from "@atcute/lexicons/syntax";
 import type { XRPCRouter } from "@atcute/xrpc-server";
 import { AuthRequiredError, json } from "@atcute/xrpc-server";
-import type { AuthContext } from "./auth.ts";
-import { createTokens, verifyAccessToken, verifyRefreshToken } from "./auth.ts";
-import { withErrorLog } from "./util.ts";
+import type { AuthContext } from "../services/auth.ts";
+import {
+	createTokens,
+	verifyAccessToken,
+	verifyRefreshToken,
+} from "../services/auth.ts";
+import { withErrorLog } from "../util.ts";
 
-export function registerSessionHandlers(
+export function registerServerHandlers(
 	router: XRPCRouter,
 	auth: AuthContext,
 	handle: string,
@@ -25,6 +29,7 @@ export function registerSessionHandlers(
 	}
 	const did = auth.serviceDid;
 	const validHandle = handle;
+
 	router.addQuery(ComAtprotoServerDescribeServer.mainSchema, {
 		handler: () =>
 			withErrorLog("describeServer", () =>
