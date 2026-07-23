@@ -101,6 +101,18 @@ export class FirehoseService {
 		};
 	}
 
+	emitSync(did: string, rev: string, blocks: Uint8Array): void {
+		const seq = this.nextSeq();
+		const frame = encodeSyncFrame(did, rev, seq, blocks);
+		this.buffer.push({ seq, frame });
+		if (this.buffer.length > BUFFER_SIZE) this.buffer.shift();
+		for (const ws of this.subscribers) {
+			if (ws.readyState === WebSocket.OPEN) {
+				ws.send(frame);
+			}
+		}
+	}
+
 	addSubscriber(ws: WebSocket): void {
 		this.subscribers.add(ws);
 		ws.addEventListener("close", () => this.subscribers.delete(ws));

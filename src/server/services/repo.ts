@@ -17,6 +17,7 @@ import { z } from "zod";
 const recordSchema = z.record(z.string(), z.unknown());
 
 import type { LocalBlockStore } from "../../blockstore/local.ts";
+import { build } from "../../build.ts";
 import { removeRecord, writeRecord } from "../../store/json.ts";
 import type { CommitData, CommitOp } from "./firehose.ts";
 
@@ -139,21 +140,7 @@ export class RepoService {
 	}
 
 	private async rebuild(): Promise<void> {
-		const proc = new Deno.Command(Deno.execPath(), {
-			args: [
-				"run",
-				"--allow-env",
-				"--allow-read",
-				"--allow-write",
-				"--allow-sys",
-				"--env",
-				"scripts/build.ts",
-			],
-		});
-		const result = await proc.output();
-		if (!result.success) {
-			throw new InternalServerError({ message: "repo build failed" });
-		}
+		await build(false);
 		const rootCid = await this.ctx.storage.getRoot();
 		if (!rootCid) {
 			throw new InternalServerError({ message: "no root after build" });

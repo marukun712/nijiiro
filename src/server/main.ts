@@ -4,6 +4,7 @@ import { isCommit } from "@atcute/repo";
 import { XRPCRouter } from "@atcute/xrpc-server";
 import { cors } from "@atcute/xrpc-server/middlewares/cors";
 import { decodeHex } from "@std/encoding/hex";
+import { exists } from "@std/fs";
 import { LocalBlockStore } from "../blockstore/local.ts";
 import { createJwtKey } from "./services/auth.ts";
 import { FirehoseService } from "./services/firehose.ts";
@@ -54,6 +55,18 @@ const service = new RepoService(ctx);
 
 const firehose = new FirehoseService();
 service.onCommit = (data) => firehose.emit(data);
+
+const statusPath = "./repo/refs/status";
+const statusExists = await exists(statusPath, { isFile: true });
+if (statusExists) {
+	const status = (await Deno.readTextFile(statusPath)).trim();
+	if (status === "1") {
+		console.log("[main] static build detected, emitting #sync");
+		const syncCarBytes = await service.getSyncCarBytes();
+		firehose.emitSync(service.did, service.commitRev, syncCarBytes);
+		await Deno.remove(statusPath);
+	}
+}
 
 const auth = { jwtKey: createJwtKey(JWT_SECRET), serviceDid: REPO_DID };
 
