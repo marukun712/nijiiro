@@ -56,18 +56,6 @@ const service = new RepoService(ctx);
 const firehose = new FirehoseService();
 service.onCommit = (data) => firehose.emit(data);
 
-const statusPath = "./repo/refs/status";
-const statusExists = await exists(statusPath, { isFile: true });
-if (statusExists) {
-	const status = (await Deno.readTextFile(statusPath)).trim();
-	if (status === "1") {
-		console.log("[main] static build detected, emitting #sync");
-		const syncCarBytes = await service.getSyncCarBytes();
-		firehose.emitSync(service.did, service.commitRev, syncCarBytes);
-		await Deno.remove(statusPath);
-	}
-}
-
 const auth = { jwtKey: createJwtKey(JWT_SECRET), serviceDid: REPO_DID };
 
 const router = new XRPCRouter({ middlewares: [cors()] });
@@ -83,13 +71,31 @@ const handler = createProxyMiddleware(
 );
 
 console.log("[main] starting server on port:", PORT);
-Deno.serve({ port: PORT }, (req) => {
-	const url = new URL(req.url);
-	if (
-		url.pathname === "/xrpc/com.atproto.sync.subscribeRepos" &&
-		req.headers.get("upgrade") === "websocket"
-	) {
-		return handleSubscribeRepos(req, firehose, service);
-	}
-	return handler(req);
-});
+Deno.serve(
+	{
+		port: PORT,
+		onListen: async () => {
+			const statusPath = "./repo/refs/status";
+			const statusExists = await exists(statusPath, { isFile: true });
+			if (statusExists) {
+				const status = (await Deno.readTextFile(statusPath)).trim();
+				if (status === "1") {
+					console.log("[main] static build detected, emitting #sync");
+					const syncCarBytes = await service.getSyncCarBytes();
+					firehose.emitSync(service.did, service.commitRev, syncCarBytes);
+					await Deno.remove(statusPath);
+				}
+			}
+		},
+	},
+	(req) => {
+		const url = new URL(req.url);
+		if (
+			url.pathname === "/xrpc/com.atproto.sync.subscribeRepos" &&
+			req.headers.get("upgrade") === "websocket"
+		) {
+			return handleSubscribeRepos(req, firehose, service);
+		}
+		return handler(req);
+	},
+);

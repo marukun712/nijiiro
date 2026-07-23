@@ -75,13 +75,10 @@ export async function build(isStatic: boolean): Promise<void> {
 		? (await Deno.readTextFile("./repo/refs/root")).trim()
 		: null;
 
-	console.log("[build] cleaning ./repo (keeping blobs)");
+	console.log("[build] cleaning ./repo");
 	const repoDirExists = await exists("./repo", { isDirectory: true });
 	if (repoDirExists) {
-		for await (const entry of Deno.readDir("./repo")) {
-			if (entry.name === "blobs") continue;
-			await Deno.remove(`./repo/${entry.name}`, { recursive: true });
-		}
+		await Deno.remove("./repo", { recursive: true });
 	}
 	await Deno.mkdir("./repo", { recursive: true });
 

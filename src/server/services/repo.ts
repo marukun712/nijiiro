@@ -2,7 +2,7 @@ import { writeCarStream } from "@atcute/car";
 import { decode } from "@atcute/cbor";
 import type { CidLink } from "@atcute/cid";
 import * as CID from "@atcute/cid";
-import { isNsid, isRecordKey } from "@atcute/lexicons/syntax";
+import { isCid, isNsid, isRecordKey } from "@atcute/lexicons/syntax";
 import {
 	MemoryBlockStore,
 	NodeStore,
@@ -18,6 +18,7 @@ const recordSchema = z.record(z.string(), z.unknown());
 
 import type { LocalBlockStore } from "../../blockstore/local.ts";
 import { build } from "../../build.ts";
+import { getBlob, listBlobCids, putBlob } from "../../store/blob.ts";
 import { removeRecord, writeRecord } from "../../store/json.ts";
 import type { CommitData, CommitOp } from "./firehose.ts";
 
@@ -409,7 +410,7 @@ export class RepoService {
 	}
 
 	async putBlob(bytes: Uint8Array): Promise<{ ref: string; size: number }> {
-		const cidStr = await this.ctx.storage.putBlob(bytes);
+		const cidStr = await putBlob(bytes);
 		return { ref: cidStr, size: bytes.length };
 	}
 
@@ -434,6 +435,7 @@ export class RepoService {
 
 		async function* blocks() {
 			for (const cidStr of cidStrs) {
+				if (!isCid(cidStr)) continue;
 				const bytes = await storage.get(cidStr);
 				if (bytes) yield { cid: CID.fromString(cidStr).bytes, data: bytes };
 			}
@@ -486,14 +488,15 @@ export class RepoService {
 	}
 
 	getBlobBytes(cidStr: string): Promise<Uint8Array | null> {
-		return this.ctx.storage.get(cidStr);
+		if (!isCid(cidStr)) return Promise.resolve(null);
+		return getBlob(cidStr);
 	}
 
 	async listBlobCids(
 		limit: number,
 		cursor?: string,
 	): Promise<{ cids: string[]; cursor?: string }> {
-		const all = await this.ctx.storage.listBlobCids();
+		const all = await listBlobCids();
 		const startIndex = cursor ? all.indexOf(cursor) + 1 : 0;
 		const page = all.slice(startIndex, startIndex + limit);
 		const nextCursor =
