@@ -17,6 +17,12 @@ import { registerRepoHandlers } from "./xrpc/repo.ts";
 import { registerServerHandlers } from "./xrpc/server.ts";
 import { handleSubscribeRepos, registerSyncHandlers } from "./xrpc/sync.ts";
 
+function withCors(res: Response): Response {
+	const headers = new Headers(res.headers);
+	headers.set("access-control-allow-origin", "*");
+	return new Response(res.body, { status: res.status, headers });
+}
+
 function getEnv(name: string, fallback?: string): string {
 	const value = Deno.env.get(name) ?? fallback;
 	if (value === undefined) throw new Error(`missing required env var: ${name}`);
@@ -144,29 +150,19 @@ Deno.serve(
 			);
 		}
 		if (url.pathname === "/.well-known/oauth-authorization-server") {
-			const res = oauthProvider.handleMetadata();
-			res.headers.set("access-control-allow-origin", "*");
-			return res;
+			return withCors(oauthProvider.handleMetadata());
 		}
 		if (url.pathname === "/oauth/jwks") {
-			const res = oauthProvider.handleJwks();
-			res.headers.set("access-control-allow-origin", "*");
-			return res;
+			return withCors(oauthProvider.handleJwks());
 		}
 		if (url.pathname === "/oauth/authorize") {
-			const res = await oauthProvider.handleAuthorize(req);
-			res.headers.set("access-control-allow-origin", "*");
-			return res;
+			return withCors(await oauthProvider.handleAuthorize(req));
 		}
 		if (url.pathname === "/oauth/token") {
-			const res = await oauthProvider.handleToken(req);
-			res.headers.set("access-control-allow-origin", "*");
-			return res;
+			return withCors(await oauthProvider.handleToken(req));
 		}
 		if (url.pathname === "/oauth/par") {
-			const res = await oauthProvider.handlePAR(req);
-			res.headers.set("access-control-allow-origin", "*");
-			return res;
+			return withCors(await oauthProvider.handlePAR(req));
 		}
 		return handler(req);
 	},
