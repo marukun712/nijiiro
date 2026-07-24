@@ -130,7 +130,8 @@ Deno.serve(
 				headers: {
 					"access-control-allow-origin": "*",
 					"access-control-allow-methods": "GET, POST, OPTIONS",
-					"access-control-allow-headers": "Content-Type, Authorization, DPoP",
+					"access-control-allow-headers":
+						"Content-Type, Authorization, DPoP, atproto-proxy, atproto-accept-labelers",
 				},
 			});
 		}
