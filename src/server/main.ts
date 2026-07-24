@@ -104,7 +104,7 @@ Deno.serve(
 			}
 		},
 	},
-	(req) => {
+	async (req) => {
 		const url = new URL(req.url);
 		if (
 			url.pathname === "/xrpc/com.atproto.sync.subscribeRepos" &&
@@ -144,13 +144,19 @@ Deno.serve(
 			return res;
 		}
 		if (url.pathname === "/oauth/authorize") {
-			return oauthProvider.handleAuthorize(req);
+			const res = await oauthProvider.handleAuthorize(req);
+			res.headers.set("access-control-allow-origin", "*");
+			return res;
 		}
 		if (url.pathname === "/oauth/token") {
-			return oauthProvider.handleToken(req);
+			const res = await oauthProvider.handleToken(req);
+			res.headers.set("access-control-allow-origin", "*");
+			return res;
 		}
 		if (url.pathname === "/oauth/par") {
-			return oauthProvider.handlePAR(req);
+			const res = await oauthProvider.handlePAR(req);
+			res.headers.set("access-control-allow-origin", "*");
+			return res;
 		}
 		return handler(req);
 	},
