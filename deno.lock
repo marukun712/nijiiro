@@ -25,6 +25,7 @@
     "npm:@atproto/identity@*": "0.5.6",
     "npm:@atproto/sync@*": "0.3.12",
     "npm:@biomejs/biome@*": "2.5.4",
+    "npm:@getcirrus/oauth-provider@0.5": "0.5.0_@atcute+cbor@2.3.6__@atcute+cid@2.4.2_@atcute+cid@2.4.2_@atcute+lexicon-doc@2.2.1__@atcute+lexicons@1.3.1",
     "npm:jose@^6.2.3": "6.2.3",
     "npm:multiformats@*": "13.3.2",
     "npm:multiformats@13.3.2": "13.3.2",
@@ -63,7 +64,16 @@
     "@atcute/atproto@4.0.3_@atcute+lexicons@2.0.3": {
       "integrity": "sha512-BNylfO7nK0yYBpSpnGhOYgrJTeZWrXHPrb6tOQmp9A3Am0epctIWm6/5lPC4ZNPHpUbwr5w/LzH/v7kjAoKEDg==",
       "dependencies": [
-        "@atcute/lexicons"
+        "@atcute/lexicons@2.0.3"
+      ]
+    },
+    "@atcute/car@5.1.2_@atcute+cbor@2.3.6__@atcute+cid@2.4.2_@atcute+cid@2.4.2": {
+      "integrity": "sha512-OCMwkNQtzkSwuWzyBFLF6w7YGYu7qJXkcDaYp618FyVnbqVsDr9fsfGEZ+p5FjYuvruZOXUH/PlZ2hRjavSEYg==",
+      "dependencies": [
+        "@atcute/cbor",
+        "@atcute/cid",
+        "@atcute/uint8array",
+        "@atcute/varint"
       ]
     },
     "@atcute/car@6.0.2_@atcute+cbor@2.3.6__@atcute+cid@2.4.2_@atcute+cid@2.4.2": {
@@ -98,20 +108,68 @@
         "@noble/secp256k1"
       ]
     },
+    "@atcute/identity-resolver@1.2.3_@atcute+identity@1.1.5__@atcute+lexicons@1.3.1_@atcute+lexicons@1.3.1": {
+      "integrity": "sha512-q891zLUMtgoD60y5Pv2YmTg4wIf4ipFuIhZlIuQTTB7qM9sGxmBbe2quzTRCTl3pnsLEmTz7l+3Dszgoutsp5w==",
+      "dependencies": [
+        "@atcute/identity@1.1.5_@atcute+lexicons@1.3.1",
+        "@atcute/lexicons@1.3.1",
+        "@atcute/util-fetch@1.0.5",
+        "@badrap/valita"
+      ]
+    },
     "@atcute/identity-resolver@2.0.1_@atcute+identity@2.0.2__@atcute+lexicons@2.0.3_@atcute+lexicons@2.0.3": {
       "integrity": "sha512-0enA9w7XnbbqsZ5Rcl6jXLf7ZZuwFQ9dBmxFq3qOxPHLaCETsqsrQflXDPqiM27TnZwYq8sqCV5D1mFOksggDQ==",
       "dependencies": [
-        "@atcute/identity",
-        "@atcute/lexicons",
-        "@atcute/util-fetch",
+        "@atcute/identity@2.0.2_@atcute+lexicons@2.0.3",
+        "@atcute/lexicons@2.0.3",
+        "@atcute/util-fetch@2.0.2",
         "valibot"
+      ]
+    },
+    "@atcute/identity@1.1.5_@atcute+lexicons@1.3.1": {
+      "integrity": "sha512-5i9nl1UVnBDPCumUwrLNl4BZpGvQ/XABEXbjhiw3PQwRUfpQA8FqByDGxXy2gWpFDrNvQ9yVuOoNsjzxJgjjVA==",
+      "dependencies": [
+        "@atcute/lexicons@1.3.1",
+        "@badrap/valita"
       ]
     },
     "@atcute/identity@2.0.2_@atcute+lexicons@2.0.3": {
       "integrity": "sha512-amr/EQceqVtBVmjBK4uUF7nKKYuRttadigpvOcAn4dnO6SNSwSjQi8KDH9LnukEotPsSP4UDsQvNfHWEoUcslw==",
       "dependencies": [
-        "@atcute/lexicons",
+        "@atcute/lexicons@2.0.3",
         "valibot"
+      ]
+    },
+    "@atcute/lexicon-doc@2.2.1_@atcute+lexicons@1.3.1": {
+      "integrity": "sha512-Stdf4wX2Abn4VqPrlVmmGummxb/csPiZf5KbbVpHzrL6O18VW1FeI1zkUn0aNjP/vtZSS2Sqq3WsijuzQa+yCQ==",
+      "dependencies": [
+        "@atcute/identity@1.1.5_@atcute+lexicons@1.3.1",
+        "@atcute/lexicons@1.3.1",
+        "@atcute/uint8array",
+        "@atcute/util-text",
+        "@badrap/valita"
+      ]
+    },
+    "@atcute/lexicon-resolver@0.1.7_@atcute+identity@1.1.5__@atcute+lexicons@1.3.1_@atcute+identity-resolver@1.2.3__@atcute+identity@1.1.5___@atcute+lexicons@1.3.1__@atcute+lexicons@1.3.1_@atcute+lexicon-doc@2.2.1__@atcute+lexicons@1.3.1_@atcute+lexicons@1.3.1_@atcute+cbor@2.3.6__@atcute+cid@2.4.2_@atcute+cid@2.4.2": {
+      "integrity": "sha512-b9a02EZXmlBCXTCmnteoQ9R7ohF9ZV1kEKuLdjIwhOV2d9GWnkgu1si/snB9q1HsN/H8E7bjrNFchL3cgy6xcA==",
+      "dependencies": [
+        "@atcute/crypto",
+        "@atcute/identity@1.1.5_@atcute+lexicons@1.3.1",
+        "@atcute/identity-resolver@1.2.3_@atcute+identity@1.1.5__@atcute+lexicons@1.3.1_@atcute+lexicons@1.3.1",
+        "@atcute/lexicon-doc",
+        "@atcute/lexicons@1.3.1",
+        "@atcute/repo@0.1.5_@atcute+cbor@2.3.6__@atcute+cid@2.4.2_@atcute+cid@2.4.2_@atcute+lexicons@1.3.1",
+        "@atcute/util-fetch@1.0.5",
+        "@badrap/valita"
+      ]
+    },
+    "@atcute/lexicons@1.3.1": {
+      "integrity": "sha512-2JVxDmHt+QwsUoPyVYWIN7ZLRLfLx4GeJxKFjA9ofStuby9hCMv7Q4GAPIXuJD8wPv8vrnhr1yRNQhiJX+bthw==",
+      "dependencies": [
+        "@atcute/uint8array",
+        "@atcute/util-text",
+        "@standard-schema/spec",
+        "esm-env"
       ]
     },
     "@atcute/lexicons@2.0.3": {
@@ -137,14 +195,26 @@
         "@atcute/uint8array"
       ]
     },
-    "@atcute/repo@1.0.2_@atcute+cbor@2.3.6__@atcute+cid@2.4.2_@atcute+cid@2.4.2_@atcute+lexicons@2.0.3": {
-      "integrity": "sha512-fsAuGbagOW52nSFtf/TWBx25A6xpZvzxBk0+S14Bp5sGNq7JoQ0zyu40P7b6+L8b/buB+1ACHPntYsKqCI4Awg==",
+    "@atcute/repo@0.1.5_@atcute+cbor@2.3.6__@atcute+cid@2.4.2_@atcute+cid@2.4.2_@atcute+lexicons@1.3.1": {
+      "integrity": "sha512-VFQhAJmgD2oX7Zz6zNRKZeWwYPJu5JsluNt2UiOCXdnbhAPC9z9SdhLzPceWeZB1a/IuFTMgIgDE5SGUZmgJCg==",
       "dependencies": [
-        "@atcute/car",
+        "@atcute/car@5.1.2_@atcute+cbor@2.3.6__@atcute+cid@2.4.2_@atcute+cid@2.4.2",
         "@atcute/cbor",
         "@atcute/cid",
         "@atcute/crypto",
-        "@atcute/lexicons",
+        "@atcute/lexicons@1.3.1",
+        "@atcute/mst",
+        "@atcute/uint8array"
+      ]
+    },
+    "@atcute/repo@1.0.2_@atcute+cbor@2.3.6__@atcute+cid@2.4.2_@atcute+cid@2.4.2_@atcute+lexicons@2.0.3": {
+      "integrity": "sha512-fsAuGbagOW52nSFtf/TWBx25A6xpZvzxBk0+S14Bp5sGNq7JoQ0zyu40P7b6+L8b/buB+1ACHPntYsKqCI4Awg==",
+      "dependencies": [
+        "@atcute/car@6.0.2_@atcute+cbor@2.3.6__@atcute+cid@2.4.2_@atcute+cid@2.4.2",
+        "@atcute/cbor",
+        "@atcute/cid",
+        "@atcute/crypto",
+        "@atcute/lexicons@2.0.3",
         "@atcute/mst",
         "@atcute/uint8array"
       ]
@@ -160,6 +230,12 @@
     },
     "@atcute/uint8array@1.1.5": {
       "integrity": "sha512-1SFCXOtjE3ismP92CqzbOfYSwJmPPPFbj798wLXSpLv2hSd5OIaUrTh6EqRVR1VZ3ZhR+vaBmd3kxAN0wkw+gQ=="
+    },
+    "@atcute/util-fetch@1.0.5": {
+      "integrity": "sha512-qjHj01BGxjSjIFdPiAjSARnodJIIyKxnCMMEcXMESo9TAyND6XZQqrie5fia+LlYWVXdpsTds8uFQwc9jdKTig==",
+      "dependencies": [
+        "@badrap/valita"
+      ]
     },
     "@atcute/util-fetch@2.0.2": {
       "integrity": "sha512-I0oenHlJjwRpWPyAJojox5H0z9NthhdMFaEjtkxyjo85VPPxk1vMJk/1ZjMJsrs1SgHhB3spazEWzV5DW8w70A==",
@@ -187,9 +263,9 @@
       "dependencies": [
         "@atcute/cbor",
         "@atcute/crypto",
-        "@atcute/identity",
-        "@atcute/identity-resolver",
-        "@atcute/lexicons",
+        "@atcute/identity@2.0.2_@atcute+lexicons@2.0.3",
+        "@atcute/identity-resolver@2.0.1_@atcute+identity@2.0.2__@atcute+lexicons@2.0.3_@atcute+lexicons@2.0.3",
+        "@atcute/lexicons@2.0.3",
         "@atcute/multibase",
         "@atcute/uint8array",
         "nanoid",
@@ -203,7 +279,7 @@
         "@atproto-labs/pipe",
         "@atproto-labs/simple-store",
         "@atproto-labs/simple-store-memory",
-        "@atproto/did",
+        "@atproto/did@0.5.4",
         "zod@3.25.76"
       ]
     },
@@ -231,7 +307,7 @@
       "dependencies": [
         "@atproto/lex-data",
         "@atproto/lex-json",
-        "@atproto/syntax",
+        "@atproto/syntax@0.7.2",
         "zod@3.25.76"
       ]
     },
@@ -241,7 +317,7 @@
         "@atproto/common-web",
         "@atproto/lex-cbor",
         "@atproto/lex-data",
-        "multiformats",
+        "multiformats@13.3.2",
         "pino"
       ]
     },
@@ -251,6 +327,12 @@
         "@noble/curves",
         "@noble/hashes",
         "uint8arrays"
+      ]
+    },
+    "@atproto/did@0.3.0": {
+      "integrity": "sha512-raUPzUGegtW/6OxwCmM8bhZvuIMzxG5t9oWsth6Tp91Kb5fTnHV2h/KKNF1C82doeA4BdXCErTyg7ISwLbQkzA==",
+      "dependencies": [
+        "zod@3.25.76"
       ]
     },
     "@atproto/did@0.5.4": {
@@ -264,6 +346,13 @@
       "dependencies": [
         "@atproto/common-web",
         "@atproto/crypto"
+      ]
+    },
+    "@atproto/jwk@0.6.0": {
+      "integrity": "sha512-bDoJPvt7TrQVi/rBfBrSSpGykhtIriKxeYCYQTiPRKFfyRhbgpElF0wPXADjIswnbzZdOwbY63az4E/CFVT3Tw==",
+      "dependencies": [
+        "multiformats@9.9.0",
+        "zod@3.25.76"
       ]
     },
     "@atproto/lex-builder@0.1.8": {
@@ -296,7 +385,7 @@
     "@atproto/lex-data@0.1.5": {
       "integrity": "sha512-TEM6GHuYpNm4O90LjNgbYq1Gmcr875S+BHrDxkg4PB5w/nlsz4HlbkGQG/WP/xbIV5O8TF5nNHDpCZ5ezTRrFA==",
       "dependencies": [
-        "multiformats",
+        "multiformats@13.3.2",
         "tslib",
         "unicode-segmenter@0.14.5"
       ]
@@ -318,7 +407,7 @@
         "@atproto/lex-document",
         "@atproto/lex-resolver",
         "@atproto/lex-schema",
-        "@atproto/syntax",
+        "@atproto/syntax@0.7.2",
         "tslib"
       ]
     },
@@ -339,7 +428,7 @@
         "@atproto/lex-document",
         "@atproto/lex-schema",
         "@atproto/repo",
-        "@atproto/syntax",
+        "@atproto/syntax@0.7.2",
         "tslib"
       ]
     },
@@ -347,7 +436,7 @@
       "integrity": "sha512-UFK0EH8pw31dvL27aoZ5K78z+UMiD3ybIgkCyd7Idm267KM1IpycerTDeABqo4CYP3/IAnzjGpQaUaVc12bELA==",
       "dependencies": [
         "@atproto/lex-data",
-        "@atproto/syntax",
+        "@atproto/syntax@0.7.2",
         "@standard-schema/spec",
         "tslib"
       ]
@@ -370,8 +459,23 @@
       "integrity": "sha512-92VH2oEsJdrIVNy7WY8rGn99ANNVglyUffoN7GJc0mxKi+fXN5iVlJ2cOyTfYABhr2ldSiptZWXEPEdBaIR9/A==",
       "dependencies": [
         "@atproto/common-web",
-        "@atproto/syntax",
-        "multiformats",
+        "@atproto/syntax@0.7.2",
+        "multiformats@13.3.2",
+        "zod@3.25.76"
+      ]
+    },
+    "@atproto/oauth-scopes@0.3.2": {
+      "integrity": "sha512-88awgvB9asSR86KjEXL31N9nFd1XG+QtbzEJFw5/wwEv41tS4S8c4Prqb/MAzVuFQ4OHOndYo1VDD99vGMpqTA==",
+      "dependencies": [
+        "@atproto/did@0.3.0",
+        "@atproto/syntax@0.5.4"
+      ]
+    },
+    "@atproto/oauth-types@0.6.3": {
+      "integrity": "sha512-jdKuoPknJuh/WjI+mYk7agSbx9mNVMbS6Dr3k1z2YMY2oRiCQjxYBuo4MLKATbxj05nMQaZRWlHRUazoAu5Cng==",
+      "dependencies": [
+        "@atproto/did@0.3.0",
+        "@atproto/jwk",
         "zod@3.25.76"
       ]
     },
@@ -383,7 +487,7 @@
         "@atproto/crypto",
         "@atproto/lex-cbor",
         "@atproto/lex-data",
-        "@atproto/syntax",
+        "@atproto/syntax@0.7.2",
         "varint",
         "zod@3.25.76"
       ]
@@ -395,10 +499,22 @@
         "@atproto/identity",
         "@atproto/lex",
         "@atproto/repo",
-        "@atproto/syntax",
+        "@atproto/syntax@0.7.2",
         "@atproto/xrpc-server",
         "p-queue",
         "ws"
+      ]
+    },
+    "@atproto/syntax@0.4.3": {
+      "integrity": "sha512-YoZUz40YAJr5nPwvCDWgodEOlt5IftZqPJvA0JDWjuZKD8yXddTwSzXSaKQAzGOpuM+/A3uXRtPzJJqlScc+iA==",
+      "dependencies": [
+        "tslib"
+      ]
+    },
+    "@atproto/syntax@0.5.4": {
+      "integrity": "sha512-9XJOpMAgsGFxMEIp8nJ8AIWv+krrY1xQMj+wULbbXhQztQV+9aZ0TbG9Jtn3Op2or8Kr6OqyWR4ga9Z189kKDw==",
+      "dependencies": [
+        "tslib"
       ]
     },
     "@atproto/syntax@0.7.2": {
@@ -441,6 +557,9 @@
         "@atproto/lexicon",
         "zod@3.25.76"
       ]
+    },
+    "@badrap/valita@0.4.6": {
+      "integrity": "sha512-4kdqcjyxo/8RQ8ayjms47HCWZIF5981oE5nIenbfThKDxWXtEHKipAOWlflpPJzZx9y/JWYQkp18Awr7VuepFg=="
     },
     "@biomejs/biome@2.5.4": {
       "integrity": "sha512-xy5FNE5kQJKyK5MR1gJy6ztXYx4WBAbYGlK04lMEgmyPRWKybY9NFwiG9yo0XdzOU8Xvhj41u034J1ywfoWfMw==",
@@ -495,6 +614,19 @@
       "integrity": "sha512-U1jaluLw1qQc2Tx7/CeSoL9N5XcqIH+GWjpUAy1ouB5nVjSCMNO+NNHdY3RAs8zxNurLWAdj6pehQdCA2zyU+Q==",
       "os": ["win32"],
       "cpu": ["x64"]
+    },
+    "@getcirrus/oauth-provider@0.5.0_@atcute+cbor@2.3.6__@atcute+cid@2.4.2_@atcute+cid@2.4.2_@atcute+lexicon-doc@2.2.1__@atcute+lexicons@1.3.1": {
+      "integrity": "sha512-EsvYu50uz+9+2aRjFze/UNcuxBoCYCOsCGYtT2xAiGX5WdDzSLCbxwUs8aPVnvGIE7SEHSb9v7+zs45oYUnEQQ==",
+      "dependencies": [
+        "@atcute/identity@1.1.5_@atcute+lexicons@1.3.1",
+        "@atcute/identity-resolver@1.2.3_@atcute+identity@1.1.5__@atcute+lexicons@1.3.1_@atcute+lexicons@1.3.1",
+        "@atcute/lexicon-resolver",
+        "@atcute/lexicons@1.3.1",
+        "@atproto/oauth-scopes",
+        "@atproto/oauth-types",
+        "@atproto/syntax@0.4.3",
+        "jose"
+      ]
     },
     "@noble/curves@1.9.7": {
       "integrity": "sha512-gbKGcRUYIjA3/zCCNaWDciTMFI0dCkvou3TL8Zmy5Nc7sJ47a0jtOeZoTaMxkuqRo9cRhjOdZJXegxYE5FN/xw==",
@@ -851,6 +983,9 @@
     "multiformats@13.3.2": {
       "integrity": "sha512-qbB0CQDt3QKfiAzZ5ZYjLFOs+zW43vA4uyM8g27PeEuXZybUOFyjrVdP93HPBHMoglibwfkdVwbzfUq8qGcH6g=="
     },
+    "multiformats@9.9.0": {
+      "integrity": "sha512-HoMUjhH9T8DDBNT+6xzkrd9ga/XiBI4xLr58LJACwK6G3HTOPeMz4nB4KJs33L2BelrIJa7P0VuNaVF3hMYfjg=="
+    },
     "nanoid@6.0.0": {
       "integrity": "sha512-mkUH+rPkwU2qPadJ0oJZOjeZ5Mxn8Q1UhevwkTRWNuUZzyia3h4rhzK39hxaHTk0o2OxB8W2SQ6A8k23ZDi1pQ==",
       "bin": true
@@ -1100,7 +1235,7 @@
     "uint8arrays@5.1.0": {
       "integrity": "sha512-vA6nFepEmlSKkMBnLBaUMVvAC4G3CTmO58C12y4sq6WPDOR7mOFYOi7GlrQ4djeSbP6JG9Pv9tJDM97PedRSww==",
       "dependencies": [
-        "multiformats"
+        "multiformats@13.3.2"
       ]
     },
     "unicode-segmenter@0.14.5": {
@@ -1177,6 +1312,7 @@
       "npm:@atcute/tid@^1.1.4",
       "npm:@atcute/xrpc-server-deno@^2.0.1",
       "npm:@atcute/xrpc-server@^2.0.2",
+      "npm:@getcirrus/oauth-provider@0.5",
       "npm:jose@^6.2.3",
       "npm:zod@^4.4.3"
     ]

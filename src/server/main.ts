@@ -1,12 +1,15 @@
 import { decode } from "@atcute/cbor";
 import { Secp256k1PrivateKeyExportable } from "@atcute/crypto";
 import { isCommit } from "@atcute/repo";
-import { XRPCRouter } from "@atcute/xrpc-server";
+import { AuthRequiredError, XRPCRouter } from "@atcute/xrpc-server";
 import { cors } from "@atcute/xrpc-server/middlewares/cors";
+import {
+	ATProtoOAuthProvider,
+	InMemoryOAuthStorage,
+} from "@getcirrus/oauth-provider";
 import { decodeHex } from "@std/encoding/hex";
 import { exists } from "@std/fs";
 import { LocalBlockStore } from "../blockstore/local.ts";
-import { createJwtKey } from "./services/auth.ts";
 import { FirehoseService } from "./services/firehose.ts";
 import { createProxyMiddleware } from "./services/proxy.ts";
 import { type RepoContext, RepoService } from "./services/repo.ts";
@@ -23,8 +26,8 @@ function getEnv(name: string, fallback?: string): string {
 const REPO_DID = getEnv("REPO_DID");
 const REPO_HANDLE = getEnv("REPO_HANDLE");
 const REPO_SIGNING_KEY_HEX = getEnv("REPO_SIGNING_KEY");
-const JWT_SECRET = getEnv("JWT_SECRET");
 const ADMIN_PASSWORD = getEnv("ADMIN_PASSWORD");
+const PDS_URL = getEnv("PDS_URL", `http://localhost:8080`);
 const PORT = Number(getEnv("PORT", "8080"));
 
 const keypair = await Secp256k1PrivateKeyExportable.importRaw(
@@ -56,18 +59,31 @@ const service = new RepoService(ctx);
 const firehose = new FirehoseService();
 service.onCommit = (data) => firehose.emit(data);
 
-const auth = { jwtKey: createJwtKey(JWT_SECRET), serviceDid: REPO_DID };
+const oauthStorage = new InMemoryOAuthStorage();
+const oauthProvider = new ATProtoOAuthProvider({
+	storage: oauthStorage,
+	issuer: PDS_URL,
+	verifyUser: (password: string) => {
+		if (password !== ADMIN_PASSWORD) return Promise.resolve(null);
+		return Promise.resolve({ sub: REPO_DID, handle: REPO_HANDLE });
+	},
+});
+
+const verifyToken = async (req: Request): Promise<void> => {
+	const tokenData = await oauthProvider.verifyAccessToken(req);
+	if (!tokenData) throw new AuthRequiredError({ error: "AuthMissing" });
+};
 
 const router = new XRPCRouter({ middlewares: [cors()] });
-registerRepoHandlers(router, service, REPO_HANDLE, auth);
-registerServerHandlers(router, auth, REPO_HANDLE, ADMIN_PASSWORD);
+registerRepoHandlers(router, service, REPO_HANDLE, verifyToken);
+registerServerHandlers(router, REPO_DID, REPO_HANDLE);
 registerSyncHandlers(router, service);
 
 const handler = createProxyMiddleware(
 	router.fetch.bind(router),
 	REPO_DID,
 	keypair,
-	auth,
+	verifyToken,
 );
 
 console.log("[main] starting server on port:", PORT);
@@ -95,6 +111,21 @@ Deno.serve(
 			req.headers.get("upgrade") === "websocket"
 		) {
 			return handleSubscribeRepos(req, firehose, service);
+		}
+		if (url.pathname === "/.well-known/oauth-authorization-server") {
+			return oauthProvider.handleMetadata();
+		}
+		if (url.pathname === "/oauth/jwks") {
+			return oauthProvider.handleJwks();
+		}
+		if (url.pathname === "/oauth/authorize") {
+			return oauthProvider.handleAuthorize(req);
+		}
+		if (url.pathname === "/oauth/token") {
+			return oauthProvider.handleToken(req);
+		}
+		if (url.pathname === "/oauth/par") {
+			return oauthProvider.handlePAR(req);
 		}
 		return handler(req);
 	},

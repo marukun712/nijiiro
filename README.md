@@ -1,45 +1,33 @@
 # nijiiro
 
-nijiiroは、シンプルなATProtocol PDSです。
+nijiiroは、単一サーバーで完結する、シンプルなATProtocol PDSです。
 
 > [!WARNING]
 > このリポジトリは、個人の実験プロジェクトです。セキュリティ的な監査は受けていませんので、自己責任での利用をお願いします。
-
-## 前提条件
-
-- HTTPS に対応した管理下のドメイン (例: `example.com`)
-- Deno がインストールされていること
 
 ## セットアップ
 
 ### 1. 秘密鍵とパスワードの生成
 
+鍵ペアとパスワードを生成します。
+
 ```sh
 deno task setup
-```
 
-以下のような出力が得られます:
-
-```
 REPO_SIGNING_KEY=<hex>
-JWT_SECRET=<hex>
 ADMIN_PASSWORD=<base64>
 REPO_SIGNING_KEY_DID=did:key:z...
 ```
 
-`REPO_SIGNING_KEY_DID` は次のステップで使用するため、メモしておいてください。
-
-対話型で簡易的にBlueskyプロフィールを設定することができます。
+また、対話型で Bluesky でのハンドルネームを設定します。
 
 ### 2. config.ts の編集
-
-`config.example.ts` を `config.ts` にコピーして編集します:
 
 ```sh
 cp config.example.ts config.ts
 ```
 
-`config.ts` 内の DID ドキュメントを編集してください。以下のプレースホルダーを置き換えます:
+configを編集します。
 
 - `did:web:localhost` → `did:web:<your-domain>` (例: `did:web:example.com`)
 - `at://localhost.local` → `at://<your-handle>` (例: `at://example.com`)
@@ -80,26 +68,25 @@ const config: Config = {
 
 ### 3. 環境変数の設定
 
-`.env.example` を `.env` にコピーして、各値を埋めます:
-
 ```sh
 cp .env.example .env
 ```
 
+先ほど生成したシークレットを入れます。
+
 ```env
-REPO_DID=did:web:<your-domain>
-REPO_HANDLE=<your-handle>
-REPO_SIGNING_KEY=<ステップ 1 の値>
+REPO_DID=
+REPO_HANDLE=
+REPO_SIGNING_KEY=
 
-JWT_SECRET=<ステップ 1 の値>
-ADMIN_PASSWORD=<ステップ 1 の値>
+ADMIN_PASSWORD=
+PDS_URL=
+PORT=
 ```
-
-`PORT` は省略可能で、デフォルトは `8080` です。
 
 ### 4. リポジトリのビルド
 
-レコードからMSTをビルドします:
+レコードからMSTをビルドします。
 
 ```sh
 deno task build
@@ -111,7 +98,7 @@ deno task build
 deno task start
 ```
 
-サーバー起動後、DID ドキュメントが配信されているか確認できます:
+DIDドキュメントが配信されているかの確認
 
 ```sh
 curl https://<your-domain>/.well-known/did.json
@@ -119,7 +106,7 @@ curl https://<your-domain>/.well-known/did.json
 
 ## リレーへの登録
 
-セットアップ完了後、Bluesky のリレーにクロールをリクエストして AppView にインデックスされるようにします。
+Bluesky のリレーにクロールをリクエストして AppView にインデックスされるようにします。
 
 ```sh
 curl -X POST https://bsky.network/xrpc/com.atproto.sync.requestCrawl \
@@ -128,10 +115,3 @@ curl -X POST https://bsky.network/xrpc/com.atproto.sync.requestCrawl \
 ```
 
 `<your-pds-hostname>` はスキームなしのホスト名です (例: `pds.example.com`)。
-
-これを行わないと Bluesky の AppView にアカウントが認識されず、`app.bsky.*` 系の操作が失敗します。
-
-## 実装予定
-
-- Bluesky AppView 以外の対応
-- OAuth

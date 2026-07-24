@@ -17,8 +17,6 @@ import {
 	type XRPCRouter,
 } from "@atcute/xrpc-server";
 import config from "../../../config.ts";
-import type { AuthContext } from "../services/auth.ts";
-import { verifyAccessToken } from "../services/auth.ts";
 import type { RepoService, WriteOp } from "../services/repo.ts";
 import { withErrorLog } from "../util.ts";
 
@@ -60,13 +58,13 @@ export function registerRepoHandlers(
 	router: XRPCRouter,
 	service: RepoService,
 	handle: string,
-	auth: AuthContext,
+	verifyToken: (req: Request) => Promise<void>,
 ) {
 	router.addProcedure(ComAtprotoRepoApplyWrites, {
 		handler: ({ input, request }) =>
 			withErrorLog("applyWrites", async () => {
 				console.log("[handler] applyWrites:", input.writes.length, "ops");
-				await verifyAccessToken(request, auth);
+				await verifyToken(request);
 				const ops = input.writes.map(toWriteOp);
 				const { commit, items } = await service.applyWrites(ops);
 
@@ -91,7 +89,7 @@ export function registerRepoHandlers(
 		handler: ({ input, request }) =>
 			withErrorLog("createRecord", async () => {
 				console.log("[handler] createRecord:", input.collection);
-				await verifyAccessToken(request, auth);
+				await verifyToken(request);
 				const rkey = input.rkey ?? tidNow();
 				const result = await service.createRecord(
 					input.collection,
@@ -109,7 +107,7 @@ export function registerRepoHandlers(
 					"[handler] putRecord:",
 					`${input.collection}/${input.rkey}`,
 				);
-				await verifyAccessToken(request, auth);
+				await verifyToken(request);
 				const result = await service.putRecord(
 					input.collection,
 					input.rkey,
@@ -126,7 +124,7 @@ export function registerRepoHandlers(
 					"[handler] deleteRecord:",
 					`${input.collection}/${input.rkey}`,
 				);
-				await verifyAccessToken(request, auth);
+				await verifyToken(request);
 				const result = await service.deleteRecord(input.collection, input.rkey);
 				return json(result);
 			}),
@@ -202,7 +200,7 @@ export function registerRepoHandlers(
 	router.addProcedure(ComAtprotoRepoUploadBlob, {
 		handler: ({ request }) =>
 			withErrorLog("uploadBlob", async () => {
-				await verifyAccessToken(request, auth);
+				await verifyToken(request);
 				const bytes = new Uint8Array(await request.arrayBuffer());
 				const mimeType =
 					request.headers.get("content-type") ?? "application/octet-stream";

@@ -6,11 +6,10 @@ import {
 } from "@atcute/identity-resolver";
 import type { Did, Nsid } from "@atcute/lexicons/syntax";
 import { isDid, isNsid } from "@atcute/lexicons/syntax";
+import { XRPCError } from "@atcute/xrpc-server";
 import { createServiceJwt } from "@atcute/xrpc-server/auth";
 import { normalize } from "@std/path/posix";
 import config from "../../../config.ts";
-import type { AuthContext } from "./auth.ts";
-import { bearerTokenFromRequest, verifyAccessToken } from "./auth.ts";
 
 const DEFAULT_APPVIEW_URL = "https://api.bsky.app";
 const DEFAULT_APPVIEW_DID_STR = "did:web:api.bsky.app";
@@ -29,10 +28,6 @@ function nsidFromPath(path: string): Nsid | null {
 	const [, prefix, nsid] = path.split("/");
 	if (prefix !== "xrpc" || !isNsid(nsid)) return null;
 	return nsid;
-}
-
-function isXrpcError(err: unknown): err is { status: number } {
-	return err instanceof Error && "status" in err;
 }
 
 function isResolvableDid(
@@ -72,7 +67,7 @@ async function proxyToService(
 	nsid: Nsid,
 	did: Did,
 	keypair: PrivateKey,
-	auth: AuthContext,
+	verifyToken: (req: Request) => Promise<void>,
 	serviceUrl: string,
 	serviceDid: Did,
 ): Promise<Response> {
@@ -82,9 +77,8 @@ async function proxyToService(
 	headers.delete("host");
 	headers.delete("atproto-proxy");
 
-	const token = bearerTokenFromRequest(req);
-	if (token) {
-		await verifyAccessToken(req, auth);
+	if (req.headers.get("authorization")) {
+		await verifyToken(req);
 		const serviceToken = await createServiceJwt({
 			keypair,
 			issuer: did,
@@ -105,7 +99,7 @@ export function createProxyMiddleware(
 	next: (req: Request) => Promise<Response> | Response,
 	did: string,
 	keypair: PrivateKey,
-	auth: AuthContext,
+	verifyToken: (req: Request) => Promise<void>,
 ): (req: Request) => Promise<Response> {
 	return async (req: Request) => {
 		const url = new URL(req.url);
@@ -171,15 +165,15 @@ export function createProxyMiddleware(
 				nsid,
 				did,
 				keypair,
-				auth,
+				verifyToken,
 				serviceUrl,
 				serviceDid,
 			);
 		} catch (err) {
-			if (isXrpcError(err)) {
-				console.log("[proxy] service error:", err.status, nsid);
+			if (err instanceof XRPCError) {
+				console.log("[proxy] service error:", err.status, err.error, nsid);
 				return new Response(
-					JSON.stringify({ error: "AuthRequired", message: String(err) }),
+					JSON.stringify({ error: err.error, message: err.message }),
 					{
 						status: err.status,
 						headers: { "content-type": "application/json" },
