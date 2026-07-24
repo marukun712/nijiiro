@@ -1,4 +1,9 @@
 import type { PrivateKey } from "@atcute/crypto";
+import {
+	CompositeDidDocumentResolver,
+	PlcDidDocumentResolver,
+	WebDidDocumentResolver,
+} from "@atcute/identity-resolver";
 import type { Did, Nsid } from "@atcute/lexicons/syntax";
 import { isDid, isNsid } from "@atcute/lexicons/syntax";
 import { createServiceJwt } from "@atcute/xrpc-server/auth";
@@ -7,8 +12,18 @@ import config from "../../../config.ts";
 import type { AuthContext } from "./auth.ts";
 import { bearerTokenFromRequest, verifyAccessToken } from "./auth.ts";
 
-const APPVIEW_URL = "https://api.bsky.app";
-const APPVIEW_DID = "did:web:api.bsky.app" as const;
+const DEFAULT_APPVIEW_URL = "https://api.bsky.app";
+const DEFAULT_APPVIEW_DID_STR = "did:web:api.bsky.app";
+if (!isDid(DEFAULT_APPVIEW_DID_STR))
+	throw new Error("invalid default appview DID");
+const DEFAULT_APPVIEW_DID: Did = DEFAULT_APPVIEW_DID_STR;
+
+const didResolver = new CompositeDidDocumentResolver({
+	methods: {
+		plc: new PlcDidDocumentResolver(),
+		web: new WebDidDocumentResolver(),
+	},
+});
 
 function nsidFromPath(path: string): Nsid | null {
 	const [, prefix, nsid] = path.split("/");
@@ -20,17 +35,52 @@ function isXrpcError(err: unknown): err is { status: number } {
 	return err instanceof Error && "status" in err;
 }
 
-async function proxyToAppView(
+function isResolvableDid(
+	did: Did,
+): did is `did:plc:${string}` | `did:web:${string}` {
+	return did.startsWith("did:plc:") || did.startsWith("did:web:");
+}
+
+async function resolveService(
+	service: string,
+): Promise<{ did: Did; url: string } | null> {
+	const hashIdx = service.indexOf("#");
+	if (hashIdx === -1) return null;
+
+	const did = service.slice(0, hashIdx);
+	const fragment = service.slice(hashIdx);
+
+	if (!isDid(did) || !isResolvableDid(did)) return null;
+
+	let didDoc: Awaited<ReturnType<typeof didResolver.resolve>>;
+	try {
+		didDoc = await didResolver.resolve(did);
+	} catch {
+		return null;
+	}
+
+	for (const svc of didDoc.service ?? []) {
+		if (svc.id === fragment && typeof svc.serviceEndpoint === "string") {
+			return { did, url: svc.serviceEndpoint };
+		}
+	}
+	return null;
+}
+
+async function proxyToService(
 	req: Request,
 	nsid: Nsid,
 	did: Did,
 	keypair: PrivateKey,
 	auth: AuthContext,
+	serviceUrl: string,
+	serviceDid: Did,
 ): Promise<Response> {
 	const url = new URL(req.url);
-	const targetUrl = new URL(url.pathname + url.search, APPVIEW_URL).href;
+	const targetUrl = new URL(url.pathname + url.search, serviceUrl).href;
 	const headers = new Headers(req.headers);
 	headers.delete("host");
+	headers.delete("atproto-proxy");
 
 	const token = bearerTokenFromRequest(req);
 	if (token) {
@@ -38,7 +88,7 @@ async function proxyToAppView(
 		const serviceToken = await createServiceJwt({
 			keypair,
 			issuer: did,
-			audience: APPVIEW_DID,
+			audience: serviceDid,
 			lxm: nsid,
 		});
 		headers.set("authorization", `Bearer ${serviceToken}`);
@@ -87,26 +137,56 @@ export function createProxyMiddleware(
 		}
 
 		const nsid = nsidFromPath(url.pathname);
+		if (!nsid || !isDid(did)) return next(req);
 
-		if (nsid?.startsWith("app.bsky.") && isDid(did)) {
-			console.log("[proxy] forwarding to appview:", nsid);
-			try {
-				return await proxyToAppView(req, nsid, did, keypair, auth);
-			} catch (err) {
-				if (isXrpcError(err)) {
-					console.log("[proxy] appview error:", err.status, nsid);
-					return new Response(
-						JSON.stringify({ error: "AuthRequired", message: String(err) }),
-						{
-							status: err.status,
-							headers: { "content-type": "application/json" },
-						},
-					);
-				}
-				throw err;
+		const proxyHeader = req.headers.get("atproto-proxy");
+
+		let serviceUrl: string;
+		let serviceDid: Did;
+
+		if (proxyHeader) {
+			const resolved = await resolveService(proxyHeader);
+			if (!resolved) {
+				return new Response(
+					JSON.stringify({
+						error: "InvalidRequest",
+						message: `unable to resolve service: ${proxyHeader}`,
+					}),
+					{ status: 400, headers: { "content-type": "application/json" } },
+				);
 			}
+			serviceUrl = resolved.url;
+			serviceDid = resolved.did;
+		} else if (nsid.startsWith("app.bsky.")) {
+			serviceUrl = DEFAULT_APPVIEW_URL;
+			serviceDid = DEFAULT_APPVIEW_DID;
+		} else {
+			return next(req);
 		}
 
-		return next(req);
+		console.log("[proxy] forwarding to service:", serviceDid, nsid);
+		try {
+			return await proxyToService(
+				req,
+				nsid,
+				did,
+				keypair,
+				auth,
+				serviceUrl,
+				serviceDid,
+			);
+		} catch (err) {
+			if (isXrpcError(err)) {
+				console.log("[proxy] service error:", err.status, nsid);
+				return new Response(
+					JSON.stringify({ error: "AuthRequired", message: String(err) }),
+					{
+						status: err.status,
+						headers: { "content-type": "application/json" },
+					},
+				);
+			}
+			throw err;
+		}
 	};
 }
