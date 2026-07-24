@@ -112,6 +112,16 @@ Deno.serve(
 		) {
 			return handleSubscribeRepos(req, firehose, service);
 		}
+		if (req.method === "OPTIONS") {
+			return new Response(null, {
+				status: 204,
+				headers: {
+					"access-control-allow-origin": "*",
+					"access-control-allow-methods": "GET, POST, OPTIONS",
+					"access-control-allow-headers": "Content-Type, Authorization, DPoP",
+				},
+			});
+		}
 		if (url.pathname === "/.well-known/oauth-protected-resource") {
 			return new Response(
 				JSON.stringify({
