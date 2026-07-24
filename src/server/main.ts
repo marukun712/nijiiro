@@ -134,10 +134,14 @@ Deno.serve(
 			);
 		}
 		if (url.pathname === "/.well-known/oauth-authorization-server") {
-			return oauthProvider.handleMetadata();
+			const res = oauthProvider.handleMetadata();
+			res.headers.set("access-control-allow-origin", "*");
+			return res;
 		}
 		if (url.pathname === "/oauth/jwks") {
-			return oauthProvider.handleJwks();
+			const res = oauthProvider.handleJwks();
+			res.headers.set("access-control-allow-origin", "*");
+			return res;
 		}
 		if (url.pathname === "/oauth/authorize") {
 			return oauthProvider.handleAuthorize(req);
