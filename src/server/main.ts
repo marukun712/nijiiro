@@ -180,11 +180,14 @@ Deno.serve(
 		}
 		if (url.pathname === "/oauth/par") {
 			console.log("[oauth] par", req.method);
-			const res = withCors(
-				await oauthProvider.handlePAR(withExternalUrl(req, PDS_URL)),
-			);
-			console.log("[oauth] par response:", res.status);
-			return res;
+			const parRes = await oauthProvider.handlePAR(withExternalUrl(req, PDS_URL));
+			if (parRes.status >= 400) {
+				const body = await parRes.text();
+				console.error("[oauth] par error:", parRes.status, body);
+				return withCors(new Response(body, { status: parRes.status, headers: parRes.headers }));
+			}
+			console.log("[oauth] par response:", parRes.status);
+			return withCors(parRes);
 		}
 		return handler(withExternalUrl(req, PDS_URL));
 	},
