@@ -23,6 +23,12 @@ function withCors(res: Response): Response {
 	return new Response(res.body, { status: res.status, headers });
 }
 
+function withExternalUrl(req: Request, pdsUrl: string): Request {
+	const url = new URL(req.url);
+	const externalUrl = new URL(url.pathname + url.search, pdsUrl);
+	return new Request(externalUrl.href, req);
+}
+
 function getEnv(name: string, fallback?: string): string {
 	const value = Deno.env.get(name) ?? fallback;
 	if (value === undefined) throw new Error(`missing required env var: ${name}`);
@@ -159,10 +165,14 @@ Deno.serve(
 			return withCors(await oauthProvider.handleAuthorize(req));
 		}
 		if (url.pathname === "/oauth/token") {
-			return withCors(await oauthProvider.handleToken(req));
+			return withCors(
+				await oauthProvider.handleToken(withExternalUrl(req, PDS_URL)),
+			);
 		}
 		if (url.pathname === "/oauth/par") {
-			return withCors(await oauthProvider.handlePAR(req));
+			return withCors(
+				await oauthProvider.handlePAR(withExternalUrl(req, PDS_URL)),
+			);
 		}
 		return handler(req);
 	},
