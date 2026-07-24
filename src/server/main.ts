@@ -112,6 +112,27 @@ Deno.serve(
 		) {
 			return handleSubscribeRepos(req, firehose, service);
 		}
+		if (url.pathname === "/.well-known/oauth-protected-resource") {
+			return new Response(
+				JSON.stringify({
+					resource: PDS_URL,
+					authorization_servers: [PDS_URL],
+					scopes_supported: [
+						"atproto",
+						"transition:generic",
+						"transition:chat.bsky",
+					],
+					bearer_methods_supported: ["header"],
+					resource_documentation: "https://atproto.com",
+				}),
+				{
+					headers: {
+						"content-type": "application/json",
+						"access-control-allow-origin": "*",
+					},
+				},
+			);
+		}
 		if (url.pathname === "/.well-known/oauth-authorization-server") {
 			return oauthProvider.handleMetadata();
 		}
