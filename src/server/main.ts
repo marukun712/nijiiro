@@ -175,6 +175,6 @@ Deno.serve(
 				await oauthProvider.handlePAR(withExternalUrl(req, PDS_URL)),
 			);
 		}
-		return handler(req);
+		return handler(withExternalUrl(req, PDS_URL));
 	},
 );
