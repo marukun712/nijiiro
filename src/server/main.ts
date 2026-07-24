@@ -1,10 +1,16 @@
 import { decode } from "@atcute/cbor";
 import { Secp256k1PrivateKeyExportable } from "@atcute/crypto";
+import {
+	CompositeDidDocumentResolver,
+	PlcDidDocumentResolver,
+	WebDidDocumentResolver,
+} from "@atcute/identity-resolver";
 import { isCommit } from "@atcute/repo";
 import { AuthRequiredError, XRPCRouter } from "@atcute/xrpc-server";
 import { cors } from "@atcute/xrpc-server/middlewares/cors";
 import {
 	ATProtoOAuthProvider,
+	createAtcutePermissionSetResolver,
 	InMemoryOAuthStorage,
 } from "@getcirrus/oauth-provider";
 import { decodeHex } from "@std/encoding/hex";
@@ -71,6 +77,13 @@ const service = new RepoService(ctx);
 const firehose = new FirehoseService();
 service.onCommit = (data) => firehose.emit(data);
 
+const didResolver = new CompositeDidDocumentResolver({
+	methods: {
+		plc: new PlcDidDocumentResolver(),
+		web: new WebDidDocumentResolver(),
+	},
+});
+
 const oauthStorage = new InMemoryOAuthStorage();
 const oauthProvider = new ATProtoOAuthProvider({
 	storage: oauthStorage,
@@ -79,6 +92,10 @@ const oauthProvider = new ATProtoOAuthProvider({
 		if (password !== ADMIN_PASSWORD) return Promise.resolve(null);
 		return Promise.resolve({ sub: REPO_DID, handle: REPO_HANDLE });
 	},
+	permissionSetResolver: createAtcutePermissionSetResolver({
+		dohUrl: "https://cloudflare-dns.com/dns-query",
+		didDocumentResolver: didResolver,
+	}),
 });
 
 const verifyToken = async (req: Request): Promise<void> => {
@@ -180,14 +197,11 @@ Deno.serve(
 		}
 		if (url.pathname === "/oauth/par") {
 			console.log("[oauth] par", req.method);
-			const parRes = await oauthProvider.handlePAR(withExternalUrl(req, PDS_URL));
-			if (parRes.status >= 400) {
-				const body = await parRes.text();
-				console.error("[oauth] par error:", parRes.status, body);
-				return withCors(new Response(body, { status: parRes.status, headers: parRes.headers }));
-			}
-			console.log("[oauth] par response:", parRes.status);
-			return withCors(parRes);
+			const res = withCors(
+				await oauthProvider.handlePAR(withExternalUrl(req, PDS_URL)),
+			);
+			console.log("[oauth] par response:", res.status);
+			return res;
 		}
 		return handler(withExternalUrl(req, PDS_URL));
 	},
