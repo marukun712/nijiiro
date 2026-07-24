@@ -165,17 +165,26 @@ Deno.serve(
 			return withCors(oauthProvider.handleJwks());
 		}
 		if (url.pathname === "/oauth/authorize") {
-			return withCors(await oauthProvider.handleAuthorize(req));
+			console.log("[oauth] authorize", req.method, url.search);
+			const res = withCors(await oauthProvider.handleAuthorize(req));
+			console.log("[oauth] authorize response:", res.status);
+			return res;
 		}
 		if (url.pathname === "/oauth/token") {
-			return withCors(
+			console.log("[oauth] token", req.method);
+			const res = withCors(
 				await oauthProvider.handleToken(withExternalUrl(req, PDS_URL)),
 			);
+			console.log("[oauth] token response:", res.status);
+			return res;
 		}
 		if (url.pathname === "/oauth/par") {
-			return withCors(
+			console.log("[oauth] par", req.method);
+			const res = withCors(
 				await oauthProvider.handlePAR(withExternalUrl(req, PDS_URL)),
 			);
+			console.log("[oauth] par response:", res.status);
+			return res;
 		}
 		return handler(withExternalUrl(req, PDS_URL));
 	},
