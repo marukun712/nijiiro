@@ -1,4 +1,7 @@
-import { ComAtprotoServerDescribeServer } from "@atcute/atproto";
+import {
+	ComAtprotoServerDescribeServer,
+	ComAtprotoServerGetSession,
+} from "@atcute/atproto";
 import { isDid, isHandle } from "@atcute/lexicons/syntax";
 import type { XRPCRouter } from "@atcute/xrpc-server";
 import { json } from "@atcute/xrpc-server";
@@ -8,6 +11,7 @@ export function registerServerHandlers(
 	router: XRPCRouter,
 	did: string,
 	handle: string,
+	verifyAccessToken: (req: Request) => Promise<{ sub: string } | null>,
 ) {
 	if (!isDid(did)) {
 		throw new Error(`configured DID is invalid: ${did}`);
@@ -26,5 +30,22 @@ export function registerServerHandlers(
 					}),
 				),
 			),
+	});
+
+	router.addQuery(ComAtprotoServerGetSession.mainSchema, {
+		handler: ({ request }) =>
+			withErrorLog("getSession", async () => {
+				const tokenData = await verifyAccessToken(request);
+				if (!tokenData) {
+					return new Response(
+						JSON.stringify({
+							error: "AuthRequired",
+							message: "Authentication required",
+						}),
+						{ status: 401, headers: { "Content-Type": "application/json" } },
+					);
+				}
+				return json({ did, handle, active: true });
+			}),
 	});
 }

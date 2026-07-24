@@ -88,7 +88,9 @@ const verifyToken = async (req: Request): Promise<void> => {
 
 const router = new XRPCRouter({ middlewares: [cors()] });
 registerRepoHandlers(router, service, REPO_HANDLE, verifyToken);
-registerServerHandlers(router, REPO_DID, REPO_HANDLE);
+registerServerHandlers(router, REPO_DID, REPO_HANDLE, (req) =>
+	oauthProvider.verifyAccessToken(req),
+);
 registerSyncHandlers(router, service);
 
 const handler = createProxyMiddleware(
