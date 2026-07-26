@@ -4,7 +4,7 @@ import {
 	PlcDidDocumentResolver,
 	WebDidDocumentResolver,
 } from "@atcute/identity-resolver";
-import type { Did, Nsid } from "@atcute/lexicons/syntax";
+import type { AtprotoAudience, Did, Nsid } from "@atcute/lexicons/syntax";
 import { isDid, isNsid } from "@atcute/lexicons/syntax";
 import { XRPCError } from "@atcute/xrpc-server";
 import { createServiceJwt } from "@atcute/xrpc-server/auth";
@@ -12,10 +12,19 @@ import { normalize } from "@std/path/posix";
 import config from "../../../config.ts";
 
 const DEFAULT_APPVIEW_URL = "https://api.bsky.app";
-const DEFAULT_APPVIEW_DID_STR = "did:web:api.bsky.app";
-if (!isDid(DEFAULT_APPVIEW_DID_STR))
-	throw new Error("invalid default appview DID");
-const DEFAULT_APPVIEW_DID: Did = DEFAULT_APPVIEW_DID_STR;
+const DEFAULT_APPVIEW_AUDIENCE_STR = "did:web:api.bsky.app#atproto_appview";
+
+function isAtprotoAudience(value: string): value is AtprotoAudience {
+	const hashIdx = value.indexOf("#");
+	if (hashIdx === -1) return false;
+	const potentialDid = value.slice(0, hashIdx);
+	if (!isDid(potentialDid)) return false;
+	return isResolvableDid(potentialDid);
+}
+
+if (!isAtprotoAudience(DEFAULT_APPVIEW_AUDIENCE_STR))
+	throw new Error("invalid default appview audience");
+const DEFAULT_APPVIEW_AUDIENCE: AtprotoAudience = DEFAULT_APPVIEW_AUDIENCE_STR;
 
 const didResolver = new CompositeDidDocumentResolver({
 	methods: {
@@ -38,7 +47,7 @@ function isResolvableDid(
 
 async function resolveService(
 	service: string,
-): Promise<{ did: Did; url: string } | null> {
+): Promise<{ did: Did; url: string; audience: Did | AtprotoAudience } | null> {
 	const hashIdx = service.indexOf("#");
 	if (hashIdx === -1) return null;
 
@@ -46,6 +55,10 @@ async function resolveService(
 	const fragment = service.slice(hashIdx);
 
 	if (!isDid(did) || !isResolvableDid(did)) return null;
+
+	const audience: Did | AtprotoAudience = isAtprotoAudience(service)
+		? service
+		: did;
 
 	let didDoc: Awaited<ReturnType<typeof didResolver.resolve>>;
 	try {
@@ -56,7 +69,7 @@ async function resolveService(
 
 	for (const svc of didDoc.service ?? []) {
 		if (svc.id === fragment && typeof svc.serviceEndpoint === "string") {
-			return { did, url: svc.serviceEndpoint };
+			return { did, url: svc.serviceEndpoint, audience };
 		}
 	}
 	return null;
@@ -69,7 +82,7 @@ async function proxyToService(
 	keypair: PrivateKey,
 	verifyToken: (req: Request) => Promise<void>,
 	serviceUrl: string,
-	serviceDid: Did,
+	audience: Did | AtprotoAudience,
 ): Promise<Response> {
 	const url = new URL(req.url);
 	const targetUrl = new URL(url.pathname + url.search, serviceUrl).href;
@@ -82,7 +95,7 @@ async function proxyToService(
 		const serviceToken = await createServiceJwt({
 			keypair,
 			issuer: did,
-			audience: serviceDid,
+			audience,
 			lxm: nsid,
 		});
 		headers.set("authorization", `Bearer ${serviceToken}`);
@@ -136,9 +149,9 @@ export function createProxyMiddleware(
 		const proxyHeader = req.headers.get("atproto-proxy");
 
 		let serviceUrl: string;
-		let serviceDid: Did;
+		let audience: Did | AtprotoAudience;
 
-		if (proxyHeader) {
+		if (proxyHeader && !nsid.startsWith("com.atproto.")) {
 			const resolved = await resolveService(proxyHeader);
 			if (!resolved) {
 				return new Response(
@@ -150,15 +163,15 @@ export function createProxyMiddleware(
 				);
 			}
 			serviceUrl = resolved.url;
-			serviceDid = resolved.did;
+			audience = resolved.audience;
 		} else if (nsid.startsWith("app.bsky.")) {
 			serviceUrl = DEFAULT_APPVIEW_URL;
-			serviceDid = DEFAULT_APPVIEW_DID;
+			audience = DEFAULT_APPVIEW_AUDIENCE;
 		} else {
 			return next(req);
 		}
 
-		console.log("[proxy] forwarding to service:", serviceDid, nsid);
+		console.log("[proxy] forwarding to service:", audience, nsid);
 		try {
 			return await proxyToService(
 				req,
@@ -167,7 +180,7 @@ export function createProxyMiddleware(
 				keypair,
 				verifyToken,
 				serviceUrl,
-				serviceDid,
+				audience,
 			);
 		} catch (err) {
 			if (err instanceof XRPCError) {
