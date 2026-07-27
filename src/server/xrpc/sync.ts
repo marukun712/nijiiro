@@ -10,6 +10,7 @@ import {
 } from "@atcute/atproto";
 import type { XRPCRouter } from "@atcute/xrpc-server";
 import { XRPCError } from "@atcute/xrpc-server";
+import { fileTypeFromBuffer } from "file-type";
 import {
 	encodeErrorFrame,
 	encodeSyncFrame,
@@ -136,8 +137,11 @@ export function registerSyncHandlers(router: XRPCRouter, service: RepoService) {
 						message: "blob not found",
 					});
 				}
-				return new Response(new Uint8Array(bytes), {
-					headers: { "content-type": "application/octet-stream" },
+				const uint8 = new Uint8Array(bytes);
+				const detected = await fileTypeFromBuffer(uint8);
+				const mimeType = detected?.mime ?? "application/octet-stream";
+				return new Response(uint8, {
+					headers: { "content-type": mimeType },
 				});
 			}),
 	});
