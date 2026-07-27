@@ -8,11 +8,7 @@ import { isDid, isHandle } from "@atcute/lexicons/syntax";
 import type { XRPCRouter } from "@atcute/xrpc-server";
 import { AuthRequiredError, json } from "@atcute/xrpc-server";
 import type { AuthContext } from "../services/auth.ts";
-import {
-	createTokens,
-	verifyAccessToken,
-	verifyRefreshToken,
-} from "../services/auth.ts";
+import { createTokens, verifyRefreshToken } from "../services/auth.ts";
 import { withErrorLog } from "../util.ts";
 
 export function registerServerHandlers(
@@ -20,6 +16,7 @@ export function registerServerHandlers(
 	auth: AuthContext,
 	handle: string,
 	password: string,
+	verifyToken: (req: Request) => Promise<void>,
 ) {
 	if (!isDid(auth.serviceDid)) {
 		throw new Error(`configured DID is invalid: ${auth.serviceDid}`);
@@ -74,7 +71,7 @@ export function registerServerHandlers(
 	router.addQuery(ComAtprotoServerGetSession.mainSchema, {
 		handler: ({ request }) =>
 			withErrorLog("getSession", async () => {
-				await verifyAccessToken(request, auth);
+				await verifyToken(request);
 
 				return json({
 					did,
