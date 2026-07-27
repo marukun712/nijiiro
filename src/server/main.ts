@@ -6,7 +6,7 @@ import {
 	WebDidDocumentResolver,
 } from "@atcute/identity-resolver";
 import { isCommit } from "@atcute/repo";
-import { AuthRequiredError, XRPCRouter } from "@atcute/xrpc-server";
+import { XRPCRouter } from "@atcute/xrpc-server";
 import { cors } from "@atcute/xrpc-server/middlewares/cors";
 import {
 	ATProtoOAuthProvider,
@@ -16,6 +16,7 @@ import {
 import { decodeHex } from "@std/encoding/hex";
 import { exists } from "@std/fs";
 import { LocalBlockStore } from "../blockstore/local.ts";
+import { createJwtKey, verifyAccessToken } from "./services/auth.ts";
 import { FirehoseService } from "./services/firehose.ts";
 import { createProxyMiddleware } from "./services/proxy.ts";
 import { type RepoContext, RepoService } from "./services/repo.ts";
@@ -44,6 +45,7 @@ function getEnv(name: string, fallback?: string): string {
 const REPO_DID = getEnv("REPO_DID");
 const REPO_HANDLE = getEnv("REPO_HANDLE");
 const REPO_SIGNING_KEY_HEX = getEnv("REPO_SIGNING_KEY");
+const JWT_SECRET = getEnv("JWT_SECRET");
 const ADMIN_PASSWORD = getEnv("ADMIN_PASSWORD");
 const PDS_URL = getEnv("PDS_URL", `http://localhost:8080`);
 const PORT = Number(getEnv("PORT", "8080"));
@@ -77,6 +79,8 @@ const service = new RepoService(ctx);
 const firehose = new FirehoseService();
 service.onCommit = (data) => firehose.emit(data);
 
+const auth = { jwtKey: createJwtKey(JWT_SECRET), serviceDid: REPO_DID };
+
 const didResolver = new CompositeDidDocumentResolver({
 	methods: {
 		plc: new PlcDidDocumentResolver(),
@@ -99,15 +103,14 @@ const oauthProvider = new ATProtoOAuthProvider({
 });
 
 const verifyToken = async (req: Request): Promise<void> => {
-	const tokenData = await oauthProvider.verifyAccessToken(req);
-	if (!tokenData) throw new AuthRequiredError({ error: "AuthMissing" });
+	const oauthData = await oauthProvider.verifyAccessToken(req);
+	if (oauthData) return;
+	await verifyAccessToken(req, auth);
 };
 
 const router = new XRPCRouter({ middlewares: [cors()] });
 registerRepoHandlers(router, service, REPO_HANDLE, verifyToken);
-registerServerHandlers(router, REPO_DID, REPO_HANDLE, (req) =>
-	oauthProvider.verifyAccessToken(req),
-);
+registerServerHandlers(router, auth, REPO_HANDLE, ADMIN_PASSWORD);
 registerSyncHandlers(router, service);
 
 const handler = createProxyMiddleware(
