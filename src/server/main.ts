@@ -136,6 +136,29 @@ Deno.serve(
 					await Deno.remove(statusPath);
 				}
 			}
+
+			console.log("[main] requesting crawl from bsky.network");
+			try {
+				const res = await fetch(
+					"https://bsky.network/xrpc/com.atproto.sync.requestCrawl",
+					{
+						method: "POST",
+						headers: { "content-type": "application/json" },
+						body: JSON.stringify({ hostname: new URL(PDS_URL).hostname }),
+					},
+				);
+				if (res.ok) {
+					console.log("[main] requestCrawl succeeded");
+				} else {
+					console.error(
+						"[main] requestCrawl failed:",
+						res.status,
+						await res.text(),
+					);
+				}
+			} catch (err) {
+				console.error("[main] requestCrawl error:", err);
+			}
 		},
 	},
 	async (req) => {

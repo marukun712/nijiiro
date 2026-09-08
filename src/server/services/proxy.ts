@@ -11,12 +11,6 @@ import { createServiceJwt } from "@atcute/xrpc-server/auth";
 import { normalize } from "@std/path/posix";
 import config from "../../../config.ts";
 
-const DEFAULT_APPVIEW_URL = "https://api.bsky.app";
-const DEFAULT_APPVIEW_DID_STR = "did:web:api.bsky.app";
-if (!isDid(DEFAULT_APPVIEW_DID_STR))
-	throw new Error("invalid default appview DID");
-const DEFAULT_APPVIEW_DID: Did = DEFAULT_APPVIEW_DID_STR;
-
 const didResolver = new CompositeDidDocumentResolver({
 	methods: {
 		plc: new PlcDidDocumentResolver(),
@@ -151,9 +145,6 @@ export function createProxyMiddleware(
 			}
 			serviceUrl = resolved.url;
 			serviceDid = resolved.did;
-		} else if (nsid.startsWith("app.bsky.")) {
-			serviceUrl = DEFAULT_APPVIEW_URL;
-			serviceDid = DEFAULT_APPVIEW_DID;
 		} else {
 			return next(req);
 		}
