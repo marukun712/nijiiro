@@ -15,6 +15,7 @@ import {
 } from "@getcirrus/oauth-provider";
 import { decodeHex } from "@std/encoding/hex";
 import { exists } from "@std/fs";
+import config from "../../config.ts";
 import { LocalBlockStore } from "../blockstore/local.ts";
 import { createJwtKey, verifyAccessToken } from "./services/auth.ts";
 import { FirehoseService } from "./services/firehose.ts";
@@ -120,6 +121,35 @@ const handler = createProxyMiddleware(
 	verifyToken,
 );
 
+// 15分おきにクロールリクエストをする
+setInterval(
+	async () => {
+		console.log("[main] requesting crawl from bsky.network");
+		try {
+			const res = await fetch(
+				"https://bsky.network/xrpc/com.atproto.sync.requestCrawl",
+				{
+					method: "POST",
+					headers: { "content-type": "application/json" },
+					body: JSON.stringify({ hostname: new URL(PDS_URL).hostname }),
+				},
+			);
+			if (res.ok) {
+				console.log("[main] requestCrawl succeeded");
+			} else {
+				console.error(
+					"[main] requestCrawl failed:",
+					res.status,
+					await res.text(),
+				);
+			}
+		} catch (err) {
+			console.error("[main] requestCrawl error:", err);
+		}
+	},
+	15 * 60 * 1000,
+);
+
 console.log("[main] starting server on port:", PORT);
 Deno.serve(
 	{
@@ -135,29 +165,6 @@ Deno.serve(
 					firehose.emitSync(service.did, service.commitRev, syncCarBytes);
 					await Deno.remove(statusPath);
 				}
-			}
-
-			console.log("[main] requesting crawl from bsky.network");
-			try {
-				const res = await fetch(
-					"https://bsky.network/xrpc/com.atproto.sync.requestCrawl",
-					{
-						method: "POST",
-						headers: { "content-type": "application/json" },
-						body: JSON.stringify({ hostname: new URL(PDS_URL).hostname }),
-					},
-				);
-				if (res.ok) {
-					console.log("[main] requestCrawl succeeded");
-				} else {
-					console.error(
-						"[main] requestCrawl failed:",
-						res.status,
-						await res.text(),
-					);
-				}
-			} catch (err) {
-				console.error("[main] requestCrawl error:", err);
 			}
 		},
 	},
@@ -177,6 +184,24 @@ Deno.serve(
 					"access-control-allow-methods": "GET, POST, OPTIONS",
 					"access-control-allow-headers":
 						"Content-Type, Authorization, DPoP, atproto-proxy, atproto-accept-labelers",
+				},
+			});
+		}
+		if (url.pathname === "/.well-known/did.json") {
+			console.log("[main] serving did.json");
+			return new Response(JSON.stringify(config.didDoc, null, 2), {
+				headers: {
+					"content-type": "application/json",
+					"access-control-allow-origin": "*",
+				},
+			});
+		}
+		if (url.pathname === "/.well-known/atproto-did") {
+			console.log("[main] serving atproto-did");
+			return new Response(REPO_DID, {
+				headers: {
+					"content-type": "text/plain",
+					"access-control-allow-origin": "*",
 				},
 			});
 		}

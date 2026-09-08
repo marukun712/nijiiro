@@ -9,7 +9,6 @@ import { isDid, isNsid } from "@atcute/lexicons/syntax";
 import { XRPCError } from "@atcute/xrpc-server";
 import { createServiceJwt } from "@atcute/xrpc-server/auth";
 import { normalize } from "@std/path/posix";
-import config from "../../../config.ts";
 
 const didResolver = new CompositeDidDocumentResolver({
 	methods: {
@@ -103,26 +102,6 @@ export function createProxyMiddleware(
 			req = new Request(url.href, req);
 		}
 		console.log("[proxy]", req.method, url.pathname);
-
-		if (url.pathname === "/.well-known/did.json") {
-			console.log("[proxy] serving did.json");
-			return new Response(JSON.stringify(config.didDoc, null, 2), {
-				headers: {
-					"content-type": "application/json",
-					"access-control-allow-origin": "*",
-				},
-			});
-		}
-
-		if (url.pathname === "/.well-known/atproto-did") {
-			console.log("[proxy] serving atproto-did");
-			return new Response(did, {
-				headers: {
-					"content-type": "text/plain",
-					"access-control-allow-origin": "*",
-				},
-			});
-		}
 
 		const nsid = nsidFromPath(url.pathname);
 		if (!nsid || !isDid(did)) return next(req);
