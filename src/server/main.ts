@@ -121,34 +121,34 @@ const handler = createProxyMiddleware(
 	verifyToken,
 );
 
-// 15分おきにクロールリクエストをする
-setInterval(
-	async () => {
-		console.log("[main] requesting crawl from bsky.network");
-		try {
-			const res = await fetch(
-				"https://bsky.network/xrpc/com.atproto.sync.requestCrawl",
-				{
-					method: "POST",
-					headers: { "content-type": "application/json" },
-					body: JSON.stringify({ hostname: new URL(PDS_URL).hostname }),
-				},
+async function requestCrawl(): Promise<void> {
+	console.log("[main] requesting crawl from bsky.network");
+	try {
+		const res = await fetch(
+			"https://bsky.network/xrpc/com.atproto.sync.requestCrawl",
+			{
+				method: "POST",
+				headers: { "content-type": "application/json" },
+				body: JSON.stringify({ hostname: new URL(PDS_URL).hostname }),
+			},
+		);
+		if (res.ok) {
+			console.log("[main] requestCrawl succeeded");
+		} else {
+			console.error(
+				"[main] requestCrawl failed:",
+				res.status,
+				await res.text(),
 			);
-			if (res.ok) {
-				console.log("[main] requestCrawl succeeded");
-			} else {
-				console.error(
-					"[main] requestCrawl failed:",
-					res.status,
-					await res.text(),
-				);
-			}
-		} catch (err) {
-			console.error("[main] requestCrawl error:", err);
 		}
-	},
-	15 * 60 * 1000,
-);
+	} catch (err) {
+		console.error("[main] requestCrawl error:", err);
+	}
+}
+
+// 起動直後に1回、以後は15分おきにクロールリクエストをする
+await requestCrawl();
+setInterval(requestCrawl, 15 * 60 * 1000);
 
 console.log("[main] starting server on port:", PORT);
 Deno.serve(
